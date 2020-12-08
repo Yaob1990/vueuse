@@ -1,27 +1,43 @@
 /* this implementation is original ported from https://github.com/logaretm/vue-use-web by Abdelrahman Awad */
 
 import { ref } from 'vue-demi'
-import { useEventListener } from '../useEventListener'
+import { useEventListener, WindowEventName } from '../useEventListener'
+import { ConfigurableNavigator, defaultNavigator } from '../_configurable'
 
-export function useClipboard() {
+/**
+ * Reactive Clipboard API.
+ *
+ * @see   {@link https://vueuse.js.org/useClipboard}
+ * @param options
+ */
+export function useClipboard({ navigator = defaultNavigator }: ConfigurableNavigator = {}) {
+  const events = ['copy', 'cut']
+  const isSupported = navigator && 'clipboard' in navigator
   const text = ref('')
-  const supported = ref('clipboard' in window.navigator)
 
-  useEventListener('copy', () => {
-    window.navigator.clipboard.readText().then((value) => {
+  function updateText() {
+    // @ts-expect-error untyped API
+    navigator.clipboard.readText().then((value) => {
       text.value = value
     })
-  })
+  }
 
-  function copy(txt: string) {
-    text.value = txt
+  if (isSupported) {
+    for (const event of events)
+      useEventListener(event as WindowEventName, updateText)
+  }
 
-    return window.navigator.clipboard.writeText(txt)
+  async function copy(txt: string) {
+    if (isSupported) {
+      // @ts-expect-error untyped API
+      await navigator.clipboard.writeText(txt)
+      text.value = txt
+    }
   }
 
   return {
+    isSupported,
     text,
     copy,
-    supported,
   }
 }

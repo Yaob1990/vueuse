@@ -8,41 +8,49 @@ This is a checklist of all the functions of VueUse. It's is useful for review or
 
 <!--LIST_STARTS-->
 
-### shared (16)
-  - [ ] asyncComputed
+### shared (24)
   - [ ] biSyncRef
   - [ ] controlledComputed
+  - [ ] debouncedWatch
   - [ ] extendRef
+  - [ ] ignorableWatch
   - [ ] makeDestructurable
+  - [ ] pausableWatch
   - [ ] syncRef
+  - [ ] throttledWatch
   - [ ] tryOnMounted
   - [ ] tryOnUnmounted
-  - [ ] useAsyncState
+  - [ ] useCounter
   - [ ] useDebounce
   - [ ] useDebounceFn
-  - [ ] useRefHistory
+  - [ ] useInterval
+  - [ ] useIntervalFn
   - [ ] useThrottle
   - [ ] useThrottleFn
+  - [ ] useTimeout
+  - [ ] useTimeoutFn
+  - [ ] useToggle
   - [ ] utils
+  - [ ] watchWithFilter
   - [ ] when
 
-### core (60)
+### core (54)
   - [ ] asyncComputed
   - [ ] createGlobalState
+  - [ ] onClickOutside
   - [ ] onStartTyping
   - [ ] useAsyncState
   - [ ] useBattery
   - [ ] useBrowserLocation
   - [ ] useClipboard
-  - [ ] useCounter
   - [ ] useCssVar
-  - [ ] useDebounce
-  - [ ] useDebounceFn
   - [ ] useDeviceLight
   - [ ] useDeviceMotion
   - [ ] useDeviceOrientation
   - [ ] useDevicePixelRatio
   - [ ] useDocumentVisibility
+  - [ ] useElementBounding
+  - [ ] useElementSize
   - [ ] useElementVisibility
   - [ ] useEventListener
   - [ ] useEventSource
@@ -51,15 +59,13 @@ This is a checklist of all the functions of VueUse. It's is useful for review or
   - [ ] useGeolocation
   - [ ] useIdle
   - [ ] useIntersectionObserver
-  - [ ] useInterval
-  - [ ] useIntervalFn
   - [ ] useLocalStorage
   - [ ] useMediaQuery
   - [ ] useMouse
   - [ ] useMouseInElement
+  - [ ] useMousePressed
   - [ ] useMutationObserver
   - [ ] useNetwork
-  - [ ] useNow
   - [ ] useOnline
   - [ ] usePageLeave
   - [ ] useParallax
@@ -67,7 +73,6 @@ This is a checklist of all the functions of VueUse. It's is useful for review or
   - [ ] usePreferredColorScheme
   - [ ] usePreferredDark
   - [ ] usePreferredLanguages
-  - [ ] useRaf
   - [ ] useRafFn
   - [ ] useRefHistory
   - [ ] useResizeObserver
@@ -75,22 +80,24 @@ This is a checklist of all the functions of VueUse. It's is useful for review or
   - [ ] useShare
   - [ ] useSpeechRecognition
   - [ ] useStorage
-  - [ ] useStoragePlain
-  - [ ] useThrottle
-  - [ ] useThrottleFn
-  - [ ] useTimeout
-  - [ ] useTimeoutFn
+  - [ ] useTimestamp
   - [ ] useTitle
   - [ ] useTransition
+  - [ ] useVModel
   - [ ] useWebSocket
   - [ ] useWebWorker
   - [ ] useWebWorkerFn
   - [ ] useWindowScroll
   - [ ] useWindowSize
 
-### integrations (3)
+### router (2)
+  - [ ] useRouteHash
+  - [ ] useRouteQuery
+
+### integrations (4)
   - [ ] useAxios
   - [ ] useCookies
+  - [ ] useNProgress
   - [ ] useQRCode
 
 ### rxjs (4)
@@ -102,9 +109,5 @@ This is a checklist of all the functions of VueUse. It's is useful for review or
 ### firebase (2)
   - [ ] useFirestore
   - [ ] useRTDB
-
-### i18n (2)
-  - [ ] createI18n
-  - [ ] useI18n
 
 <!--LIST_ENDS-->

@@ -1,11 +1,14 @@
 import dayjs from 'dayjs'
 import { defineDemo, html } from '../../_docs'
-import { defineComponent, computed } from 'vue-demi'
-import { useWebWorkerFn, WorkerStatus } from '.'
-import { useNow } from '../useNow'
+import { defineComponent, computed, ref, nextTick } from 'vue-demi'
+import { useWebWorkerFn } from '.'
+import { useTimestamp } from '../useTimestamp'
 
-const numbers: number[] = [...Array(5000000)].map(_ => ~~(Math.random() * 1000000))
-const sortNumbers = (nums: number[]): number[] => nums.sort()
+const heavyTask = () => {
+  const randomNumber = () => ~~(Math.random() * 5_000_000)
+  const numbers: number[] = Array(5_000_000).fill(undefined).map(randomNumber)
+  return numbers.sort().slice(0, 5)
+}
 
 defineDemo(
   {
@@ -16,22 +19,30 @@ defineDemo(
   },
   defineComponent({
     setup() {
-      const { workerFn, workerStatus, workerTerminate } = useWebWorkerFn(sortNumbers)
-      const time = useNow()
+      const { workerFn, workerStatus, workerTerminate } = useWebWorkerFn(heavyTask)
+      const { timestamp: time } = useTimestamp()
       const computedTime = computed(() => dayjs(time.value).format('YYYY-MM-DD HH:mm:ss SSS'))
-      const running = computed(() => workerStatus.value === WorkerStatus.Runing)
+      const running = computed(() => workerStatus.value === 'RUNNING')
 
-      const baseSort = () => {
-        const data = sortNumbers(numbers)
-        console.log('Normal sort (top 10 of 5000000)', data.slice(0, 10))
+      const data = ref()
+      const runner = ref()
+
+      const baseSort = async() => {
+        data.value = null
+        await nextTick()
+        data.value = heavyTask()
+        runner.value = 'Main'
       }
-
       const workerSort = async() => {
-        const data = await workerFn(numbers)
-        console.log('Worker sort (top 10 of 5000000)', data.slice(0, 10))
+        data.value = null
+        await nextTick()
+        data.value = await workerFn()
+        runner.value = 'Worker'
       }
 
       return {
+        data,
+        runner,
         running,
         baseSort,
         workerSort,
@@ -42,17 +53,21 @@ defineDemo(
 
     template: html`
       <div>
-        <p>Current Time: {{computedTime}}</p>
-        <note>Open console to see the sorted result. Clock stops when UI blocking happends.</note>
+        <p>Current Time: <strong></strong>{{computedTime}}</strong></p>
+        <note>This is a demo showing sort for large array (5 milion numbers) with or w/o WebWorker.<br>Clock stops when UI blocking happends.</note>
         <button @click="baseSort">
-          Normal Sort
+          Sort in Main Thread
         </button>
         <button v-if="!running" @click="workerSort">
-          Worker Sort
+          Sort in Worker
         </button>
         <button v-else @click="workerTerminate" class="orange">
           Terminate Worker
         </button>
+        <p v-if='data'>
+          Thread: <strong>{{runner}}</strong><br>
+          Result: <strong>{{JSON.stringify(data)}}</strong>
+        </p>
       </div>
     `,
   }),

@@ -1,124 +1,127 @@
-import 'vue-tsx-support/enable-check'
-import Vue from 'vue'
 import YAML from 'js-yaml'
-import { storiesOf } from '@storybook/vue'
-import { CSSProperties } from 'react'
-import { defineComponent, ref } from 'vue-demi'
-import { ShowDocs } from '../../_docs/showdocs'
+import type { CSSProperties } from 'react'
+import { computed, defineComponent, reactive, ref } from 'vue-demi'
+import { defineDemo, html } from '../../_docs'
 import { useMediaQuery } from '../useMediaQuery'
 import { useParallax } from '.'
 
-const Demo = defineComponent({
-  setup() {
-    const demo = ref(null)
+const targetStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  justifyContent: 'center',
+  minHeight: '500px',
+  transition: '.3s ease-out all',
+}
+const cardWindowStyle: CSSProperties = {
+  overflow: 'hidden',
+  fontSize: '6rem',
+  position: 'absolute',
+  top: 'calc(50% - 1em)',
+  left: 'calc(50% - 1em)',
+  height: '2em',
+  width: '2em',
+  margin: 'auto',
+}
+const layerBase: CSSProperties = {
+  position: 'absolute',
+  height: '100%',
+  width: '100%',
+  transition: '.3s ease-out all',
+}
+const containerStyle: CSSProperties = {
+  margin: '3em auto',
+  perspective: '300px',
+}
 
-    return {
-      ...useParallax({
-        deviceOrientationTiltAdjust: i => i * 2,
-        deviceOrientationRollAdjust: i => i * 2,
-        targetElement: demo,
-      }),
-      isMobile: useMediaQuery('(max-width: 700px)'),
-      demo,
-    }
+defineDemo(
+  {
+    name: 'useParallax',
+    category: 'Sensors',
+    docs: require('./index.md'),
+    module,
   },
+  defineComponent({
+    setup() {
+      const target = ref(null)
+      const isMobile = useMediaQuery('(max-width: 700px)', { window: window.parent })
 
-  render(this: Vue & any) {
-    const {
-      tilt,
-      roll,
-      isMobile,
-      source,
-    } = this
+      const parallax = reactive(useParallax(target, { window: isMobile.value ? window.parent : window }))
 
-    const demo: CSSProperties = {
-      display: 'flex',
-      flexDirection: 'column',
-      justifyContent: 'center',
-      minHeight: '500px',
-      transition: '.3s ease-out all',
-    }
-    const container: CSSProperties = {
-      margin: '3em auto',
-      perspective: '300px',
-    }
-    const card: CSSProperties = {
-      background: '#fff',
-      height: '20rem',
-      width: '15rem',
-      borderRadius: '5px',
-      overflow: 'hidden',
-      transition: '.3s ease-out all',
-      boxShadow: '0 0 20px 0 rgba(255, 255, 255, 0.25)',
-      transform: `rotateX(${roll * 20}deg) rotateY(${tilt * 20}deg)`,
-    }
-    const card__window: CSSProperties = {
-      overflow: 'hidden',
-      fontSize: '6rem',
-      position: 'absolute',
-      top: 'calc(50% - 1em)',
-      left: 'calc(50% - 1em)',
-      height: '2em',
-      width: '2em',
-      margin: 'auto',
-    }
-    const img: CSSProperties = {
-      position: 'absolute',
-      height: '100%',
-      width: '100%',
-      transition: '.3s ease-out all',
-    }
-    const info: CSSProperties = {
-      opacity: 0.4,
-      position: isMobile ? 'inherit' : 'absolute',
-      top: '60px',
-      left: '60px',
-    }
+      const infoStyle = computed<CSSProperties>(() => ({
+        opacity: 0.4,
+        top: '60px',
+        left: '60px',
+        position: isMobile.value ? 'inherit' : 'absolute',
+      }))
 
-    const img1 = {
-      transform: `translateX(${tilt * 10}px) translateY(${roll * 10}px) scale(1.33)`,
-    }
-    const img2 = {
-      transform: `translateX(${tilt * 20}px) translateY(${roll * 20}px) scale(1.33)`,
-    }
-    const img3 = {
-      transform: `translateX(${tilt * 30}px) translateY(${roll * 30}px) scale(1.33)`,
-    }
-    const img4 = {
-      transform: `translateX(${tilt * 40}px) translateY(${roll * 40}px) scale(1.33)`,
-    }
+      const layer0 = computed(() => ({
+        ...layerBase,
+        transform: `translateX(${parallax.tilt * 10}px) translateY(${parallax.roll * 10}px) scale(1.33)`,
+      }))
 
-    // @ts-ignore
-    const Docs: any = <ShowDocs md={require('./index.md')} />
+      const layer1 = computed(() => ({
+        ...layerBase,
+        transform: `translateX(${parallax.tilt * 20}px) translateY(${parallax.roll * 20}px) scale(1.33)`,
+      }))
 
-    return (
+      const layer2 = computed(() => ({
+        ...layerBase,
+        transform: `translateX(${parallax.tilt * 30}px) translateY(${parallax.roll * 30}px) scale(1.33)`,
+      }))
+
+      const layer3 = computed(() => ({
+        ...layerBase,
+        transform: `translateX(${parallax.tilt * 40}px) translateY(${parallax.roll * 40}px) scale(1.33)`,
+      }))
+
+      const layer4 = layerBase
+
+      const cardStyle = computed(() => ({
+        background: '#fff',
+        height: '20rem',
+        width: '15rem',
+        borderRadius: '5px',
+        overflow: 'hidden',
+        transition: '.3s ease-out all',
+        boxShadow: '0 0 20px 0 rgba(255, 255, 255, 0.25)',
+        transform: `rotateX(${parallax.roll * 20}deg) rotateY(${parallax.tilt * 20}deg)`,
+      }))
+
+      return {
+        target,
+        parallax,
+        infoStyle,
+        layer0,
+        layer1,
+        layer2,
+        layer3,
+        layer4,
+        cardStyle,
+        cardWindowStyle,
+        containerStyle,
+        targetStyle,
+        YAML,
+      }
+    },
+
+    template: html`
       <div>
-        <div id="demo" ref="demo" style={demo}>
-          <pre style={info}>{
-            YAML.safeDump({
-              tilt,
-              roll,
-              source,
-            })
-          }</pre>
-          <div style={container}>
-            <div style={card}>
-              <div style={card__window}>
-                <img style={{ ...img, ...img1 }} src="http://jaromvogel.com/images/design/jumping_rabbit/page2layer0.png" alt=""/>
-                <img style={{ ...img, ...img2 }} src="http://jaromvogel.com/images/design/jumping_rabbit/page2layer1.png" alt=""/>
-                <img style={{ ...img, ...img3 }} src="http://jaromvogel.com/images/design/jumping_rabbit/page2layer2.png" alt=""/>
-                <img style={{ ...img, ...img4 }} src="http://jaromvogel.com/images/design/jumping_rabbit/page2layer3.png" alt=""/>
-                <img style={img} src="http://jaromvogel.com/images/design/jumping_rabbit/page2layer4.png" alt=""/>
+        <div ref="target" :style="targetStyle">
+          <pre :style="infoStyle">{{YAML.safeDump(parallax)}}</pre>
+          <div :style="containerStyle">
+            <div :style="cardStyle">
+              <div :style="cardWindowStyle">
+                <img :style="layer0" src="https://jaromvogel.com/images/design/jumping_rabbit/page2layer0.png" alt=""/>
+                <img :style="layer1" src="https://jaromvogel.com/images/design/jumping_rabbit/page2layer1.png" alt=""/>
+                <img :style="layer2" src="https://jaromvogel.com/images/design/jumping_rabbit/page2layer2.png" alt=""/>
+                <img :style="layer3" src="https://jaromvogel.com/images/design/jumping_rabbit/page2layer3.png" alt=""/>
+                <img :style="layer4" src="https://jaromvogel.com/images/design/jumping_rabbit/page2layer4.png" alt=""/>
               </div>
             </div>
           </div>
-          <note style={{ opacity: 1 }}>Credits of image to <a href="https://codepen.io/jaromvogel" target="__blank">Jarom Vogel</a></note>
+          <note class="opacity-1">Credit of images to <a href="https://codepen.io/jaromvogel" target="__blank">Jarom Vogel</a></note>
         </div>
-        {Docs}
       </div>
-    )
-  },
-})
-
-storiesOf('Sensors', module)
-  .add('useParallax', () => Demo as any)
+    `,
+  }),
+)

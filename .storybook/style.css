@@ -35,7 +35,7 @@
 }
 
 #demo button[disabled] {
-  @apply bg-gray-400 border-gray-600 text-gray-600 opacity-50;
+  @apply bg-gray-400 border-gray-600 text-gray-600 opacity-50 pointer-events-none;
 }
 
 #demo input {
@@ -102,10 +102,6 @@ html, body, div, .markdown-body {
 .markdown-body h1,
 .markdown-body h2 {
   border-bottom-color: rgba(255, 255, 255, 0.1);
-}
-
-.markdown-body pre {
-  position: relative;
 }
 
 .sb-show-main a,

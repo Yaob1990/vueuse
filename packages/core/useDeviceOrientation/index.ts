@@ -4,26 +4,32 @@ import { ref, Ref } from 'vue-demi'
 import { useEventListener } from '../useEventListener'
 import { ConfigurableWindow, defaultWindow } from '../_configurable'
 
+/**
+ * Reactive DeviceOrientationEvent.
+ *
+ * @see   {@link https://vueuse.js.org/useDeviceOrientation}
+ * @param options
+ */
 export function useDeviceOrientation(options: ConfigurableWindow = {}) {
-  const {
-    window = defaultWindow,
-  } = options
+  const { window = defaultWindow } = options
+  const isSupported = Boolean(window && 'DeviceOrientationEvent' in window)
 
   const isAbsolute = ref(false)
-  const alpha: Ref<number | null> = ref(0)
-  const beta: Ref<number | null> = ref(0)
-  const gamma: Ref<number | null> = ref(0)
+  const alpha: Ref<number | null> = ref(null)
+  const beta: Ref<number | null> = ref(null)
+  const gamma: Ref<number | null> = ref(null)
 
-  if (window) {
-    useEventListener('deviceorientation', (event) => {
+  if (window && isSupported) {
+    useEventListener(window, 'deviceorientation', (event) => {
       isAbsolute.value = event.absolute
       alpha.value = event.alpha
       beta.value = event.beta
       gamma.value = event.gamma
-    }, undefined, window)
+    })
   }
 
   return {
+    isSupported,
     isAbsolute,
     alpha,
     beta,
