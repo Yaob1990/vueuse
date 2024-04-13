@@ -1,21 +1,37 @@
-import { ref } from 'vue-demi'
-import { tryOnUnmounted } from '../tryOnUnmounted'
+import { readonly, ref } from 'vue-demi'
+import type { AnyFn, MaybeRefOrGetter, Stoppable } from '../utils'
+import { toValue } from '../toValue'
+import { tryOnScopeDispose } from '../tryOnScopeDispose'
+import { isClient } from '../utils'
+
+export interface UseTimeoutFnOptions {
+  /**
+   * Start the timer immediate after calling this function
+   *
+   * @default true
+   */
+  immediate?: boolean
+}
 
 /**
  * Wrapper for `setTimeout` with controls.
  *
  * @param cb
  * @param interval
- * @param immediate
+ * @param options
  */
-export function useTimeoutFn(
-  cb: () => any,
-  interval?: number,
-  immediate?: boolean,
-) {
-  const isActive = ref(false)
+export function useTimeoutFn<CallbackFn extends AnyFn>(
+  cb: CallbackFn,
+  interval: MaybeRefOrGetter<number>,
+  options: UseTimeoutFnOptions = {},
+): Stoppable<Parameters<CallbackFn> | []> {
+  const {
+    immediate = true,
+  } = options
 
-  let timer: number | null = null
+  const isPending = ref(false)
+
+  let timer: ReturnType<typeof setTimeout> | null = null
 
   function clear() {
     if (timer) {
@@ -25,26 +41,31 @@ export function useTimeoutFn(
   }
 
   function stop() {
-    isActive.value = false
+    isPending.value = false
     clear()
   }
 
-  function start() {
+  function start(...args: Parameters<CallbackFn> | []) {
     clear()
-    isActive.value = true
+    isPending.value = true
     timer = setTimeout(() => {
+      isPending.value = false
       timer = null
-      cb()
-    }, interval)
+
+      cb(...args)
+    }, toValue(interval))
   }
 
-  if (immediate)
-    start()
+  if (immediate) {
+    isPending.value = true
+    if (isClient)
+      start()
+  }
 
-  tryOnUnmounted(stop)
+  tryOnScopeDispose(stop)
 
   return {
-    isActive,
+    isPending: readonly(isPending),
     start,
     stop,
   }

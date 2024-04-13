@@ -1,27 +1,37 @@
-import type firebase from 'firebase'
+import { onValue } from 'firebase/database'
+import type { DataSnapshot, DatabaseReference } from 'firebase/database'
+import type { Ref } from 'vue-demi'
 import { ref } from 'vue-demi'
-import { tryOnUnmounted } from '@vueuse/shared'
+import { tryOnScopeDispose } from '@vueuse/shared'
+
+export interface UseRTDBOptions {
+  errorHandler?: (err: Error) => void
+  autoDispose?: boolean
+}
 
 /**
  * Reactive Firebase Realtime Database binding.
  *
- * @see   {@link https://vueuse.js.org/useRTDB}
- * @param docRef
+ * @see https://vueuse.org/useRTDB
  */
-export function useRTDB(
-  docRef: firebase.database.Reference,
+export function useRTDB<T = any>(
+  docRef: DatabaseReference,
+  options: UseRTDBOptions = {},
 ) {
-  const data = ref<any>(null)
+  const {
+    errorHandler = (err: Error) => console.error(err),
+    autoDispose = true,
+  } = options
+  const data = ref(undefined) as Ref<T | undefined>
 
-  function update(snapshot: firebase.database.DataSnapshot) {
+  function update(snapshot: DataSnapshot) {
     data.value = snapshot.val()
   }
 
-  docRef.on('value', update)
+  const off = onValue(docRef, update, errorHandler)
 
-  tryOnUnmounted(() => {
-    docRef.off('value', update)
-  })
+  if (autoDispose)
+    tryOnScopeDispose(() => off())
 
   return data
 }

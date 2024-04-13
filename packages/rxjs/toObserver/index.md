@@ -1,14 +1,18 @@
+---
+category: '@RxJS'
+---
+
 # toObserver
 
-> Sugar function to convert a ref in an observer
+Sugar function to convert a `ref` into an RxJS [Observer](https://rxjs.dev/guide/observer).
 
 ## Usage
 
 ```ts
 import { ref } from 'vue'
-import { toObserver, fromEvent, from } from '@vueuse/rxjs'
+import { from, fromEvent, toObserver, useSubscription } from '@vueuse/rxjs'
 import { interval } from 'rxjs'
-import { mapTo, takeUntil, withLatestFrom, map } from 'rxjs/operators'
+import { map, mapTo, startWith, takeUntil, withLatestFrom } from 'rxjs/operators'
 
 const count = ref(0)
 const button = ref<HTMLButtonElement>(null)
@@ -19,8 +23,8 @@ useSubscription(
       mapTo(1),
       takeUntil(fromEvent(button, 'click')),
       withLatestFrom(from(count).pipe(startWith(0))),
-      map(([total, curr]) => curr + total),
+      map(([curr, total]) => curr + total),
     )
-    .subscribe(toObserver(count)) // same as ).subscribe(val => (count.value = val))
-) 
+    .subscribe(toObserver(count)), // same as ).subscribe(val => (count.value = val))
+)
 ```

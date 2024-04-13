@@ -1,13 +1,21 @@
-import type firebase from 'firebase'
-import { ref, Ref } from 'vue-demi'
-import { isDef, tryOnUnmounted } from '@vueuse/shared'
+import type { Ref } from 'vue-demi'
+import { computed, isRef, ref, watch } from 'vue-demi'
+import type { DocumentData, DocumentReference, DocumentSnapshot, Query, QueryDocumentSnapshot } from 'firebase/firestore'
+import type { MaybeRef } from '@vueuse/shared'
+import { isDef, tryOnScopeDispose, useTimeoutFn } from '@vueuse/shared'
+import { onSnapshot } from 'firebase/firestore'
+
+export interface UseFirestoreOptions {
+  errorHandler?: (err: Error) => void
+  autoDispose?: boolean | number
+}
 
 export type FirebaseDocRef<T> =
-  firebase.firestore.Query<T> |
-  firebase.firestore.DocumentReference<T>
+  Query<T> |
+  DocumentReference<T>
 
 function getData<T>(
-  docRef: firebase.firestore.DocumentSnapshot<T> | firebase.firestore.QueryDocumentSnapshot<T>,
+  docRef: DocumentSnapshot<T> | QueryDocumentSnapshot<T>,
 ) {
   const data = docRef.data()
 
@@ -21,56 +29,89 @@ function getData<T>(
   return data
 }
 
-function isDocumentReference<T>(docRef: any): docRef is firebase.firestore.DocumentReference<T> {
-  return Boolean(docRef.parent)
+function isDocumentReference<T>(docRef: any): docRef is DocumentReference<T> {
+  return (docRef.path?.match(/\//g) || []).length % 2 !== 0
 }
 
-export function useFirestore<T extends firebase.firestore.DocumentData> (
-  docRef: firebase.firestore.DocumentReference<T>,
-  errorHandler?: (err: Error) => void,
-): Ref<T|null>
-export function useFirestore<T extends firebase.firestore.DocumentData> (
-  docRef: firebase.firestore.Query<T>,
-  errorHandler?: (err: Error) => void,
+type Falsy = false | 0 | '' | null | undefined
+
+export function useFirestore<T extends DocumentData>(
+  maybeDocRef: MaybeRef<DocumentReference<T> | Falsy>,
+  initialValue: T,
+  options?: UseFirestoreOptions
+): Ref<T | null>
+export function useFirestore<T extends DocumentData>(
+  maybeDocRef: MaybeRef<Query<T> | Falsy>,
+  initialValue: T[],
+  options?: UseFirestoreOptions
 ): Ref<T[]>
+
+// nullable initial values
+export function useFirestore<T extends DocumentData>(
+  maybeDocRef: MaybeRef<DocumentReference<T> | Falsy>,
+  initialValue?: T | undefined | null,
+  options?: UseFirestoreOptions,
+): Ref<T | undefined | null>
+export function useFirestore<T extends DocumentData>(
+  maybeDocRef: MaybeRef<Query<T> | Falsy>,
+  initialValue?: T[],
+  options?: UseFirestoreOptions
+): Ref<T[] | undefined>
 
 /**
  * Reactive Firestore binding. Making it straightforward to always keep your
  * local data in sync with remotes databases.
  *
- * @see   {@link https://vueuse.js.org/useFirestore}
- * @param docRef
- * @param errorHandler
+ * @see https://vueuse.org/useFirestore
  */
-export function useFirestore<T extends firebase.firestore.DocumentData>(
-  docRef: FirebaseDocRef<T>,
-  errorHandler = (err: Error) => console.error(err),
+export function useFirestore<T extends DocumentData>(
+  maybeDocRef: MaybeRef<FirebaseDocRef<T> | Falsy>,
+  initialValue: any = undefined,
+  options: UseFirestoreOptions = {},
 ) {
-  if (isDocumentReference<T>(docRef)) {
-    const data = ref<T|null>(null)
+  const {
+    errorHandler = (err: Error) => console.error(err),
+    autoDispose = true,
+  } = options
 
-    const close = docRef.onSnapshot((snapshot) => {
-      // @ts-ignore
-      data.value = getData(snapshot) || null
-    }, errorHandler)
+  const refOfDocRef = isRef(maybeDocRef)
+    ? maybeDocRef
+    : computed(() => maybeDocRef)
 
-    tryOnUnmounted(() => {
+  let close = () => { }
+  const data = ref(initialValue) as Ref<T | T[] | null | undefined>
+
+  watch(refOfDocRef, (docRef) => {
+    close()
+    if (!refOfDocRef.value) {
+      data.value = initialValue
+    }
+    else if (isDocumentReference<T>(refOfDocRef.value)) {
+      close = onSnapshot(docRef as DocumentReference<T>, (snapshot) => {
+        data.value = getData(snapshot) || null
+      }, errorHandler)
+    }
+    else {
+      close = onSnapshot(docRef as Query<T>, (snapshot) => {
+        data.value = snapshot.docs.map(getData).filter(isDef)
+      }, errorHandler)
+    }
+  }, { immediate: true })
+
+  if (autoDispose === true) {
+    // Dispose the request now.
+    tryOnScopeDispose(() => {
       close()
     })
-
-    return data
   }
-  else {
-    const data = ref([]) as Ref<T[]>
-
-    const close = docRef.onSnapshot((snapshot) => {
-      data.value = snapshot.docs.map(getData).filter(isDef)
-    }, errorHandler)
-
-    tryOnUnmounted(() => {
-      close()
+  else if (typeof autoDispose === 'number') {
+    // Dispose the request after timeout.
+    tryOnScopeDispose(() => {
+      useTimeoutFn(() => {
+        close()
+      }, autoDispose)
     })
-
-    return data
   }
+
+  return data
 }

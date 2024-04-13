@@ -1,25 +1,22 @@
+---
+category: Sensors
+---
+
 # useParallax
 
-> Create parallax effect easily. It uses [useDeviceOrientation](/?path=/story/sensors--usedeviceorientation) and fallback to [useMouse](/?path=/story/sensors--usemouse) if orientation is not supported.
+Create parallax effect easily. It uses `useDeviceOrientation` and fallback to `useMouse` if orientation is not supported.
 
 ## Usage
 
-```html
-<div ref='container'>
-</div>
-```
-
-```js
+```vue
+<script setup>
 import { useParallax } from '@vueuse/core'
 
-export default {
-  setup() {
-    const container = ref(null)
-    const { tilt, roll, source } = useParallax(container)
+const container = ref(null)
+const { tilt, roll, source } = useParallax(container)
+</script>
 
-    return {
-      container,
-    }
-  },
-}
+<template>
+  <div ref="container" />
+</template>
 ```

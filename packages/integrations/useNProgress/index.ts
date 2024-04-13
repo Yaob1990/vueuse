@@ -1,57 +1,52 @@
-import nprogress, { NProgressOptions } from 'nprogress'
-import { MaybeRef, tryOnUnmounted, isNumber, isBoolean } from '@vueuse/shared'
-import { ref, isRef, watch } from 'vue-demi'
+import type { NProgressOptions } from 'nprogress'
+import nprogress from 'nprogress'
+import type { MaybeRefOrGetter } from '@vueuse/shared'
+import { isClient, tryOnScopeDispose } from '@vueuse/shared'
+import { computed, ref, watchEffect } from 'vue-demi'
+
+export type UseNProgressOptions = Partial<NProgressOptions>
 
 /**
  * Reactive progress bar.
  *
- * @see   {@link https://vueuse.js.org/useNProgress}
- * @param currentProgress
- * @param options
+ * @see https://vueuse.org/useNProgress
  */
 export function useNProgress(
-  currentProgress: MaybeRef<number | null | undefined> = null,
-  options?: NProgressOptions | undefined,
+  currentProgress: MaybeRefOrGetter<number | null | undefined> = null,
+  options?: UseNProgressOptions,
 ) {
-  const progress = isRef(currentProgress)
-    ? currentProgress
-    : ref<number|null>(currentProgress)
-  const isLoading = ref<boolean|null>(null)
+  const progress = ref(currentProgress)
+  const isLoading = computed({
+    set: load => load ? nprogress.start() : nprogress.done(),
+    get: () => typeof progress.value === 'number' && progress.value < 1,
+  })
 
   if (options)
     nprogress.configure(options)
 
-  watch([progress, isLoading], ([p, l]) => {
-    if (isNumber(p)) {
-      nprogress.set(p)
-      isLoading.value = p < 1
-    }
-    else if (isBoolean(l)) {
-      l ? nprogress.start() : nprogress.done()
-    }
-    else {
-      nprogress.remove()
-    }
-  }, {
-    immediate: true,
+  const setProgress = nprogress.set
+  nprogress.set = (n: number) => {
+    progress.value = n
+    return setProgress.call(nprogress, n)
+  }
+
+  watchEffect(() => {
+    if (typeof progress.value === 'number' && isClient)
+      setProgress.call(nprogress, progress.value)
   })
 
-  tryOnUnmounted(nprogress.remove)
+  tryOnScopeDispose(nprogress.remove)
 
   return {
     isLoading,
     progress,
-    start: () => {
-      progress.value = null
-      isLoading.value = true
-    },
-    done: () => {
-      progress.value = null
-      isLoading.value = false
-    },
+    start: nprogress.start,
+    done: nprogress.done,
     remove: () => {
       progress.value = null
-      isLoading.value = null
+      nprogress.remove()
     },
   }
 }
+
+export type UseNProgressReturn = ReturnType<typeof useNProgress>

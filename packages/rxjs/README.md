@@ -2,37 +2,37 @@
 
 [![NPM version](https://img.shields.io/npm/v/@vueuse/rxjs?color=a1b858)](https://www.npmjs.com/package/@vueuse/rxjs)
 
-> This is an add-on of [VueUse](https://github.com/antfu), enables of a natural way the use of RxJS.
+> This is an add-on of [VueUse](https://github.com/antfu), enabling a natural way of using RxJS.
 
-[**Full Documents**](https://vueuse.js.org/)
+## Install
 
-## 📦 Install
+```bash
+npm i @vueuse/rxjs rxjs
+```
 
-<pre class='language-bash'>
-npm i <b>@vueuse/rxjs</b> rxjs
-</pre>
-
-## ⚡ Functions
+## Functions
 
 <!--GENERATED LIST, DO NOT MODIFY MANUALLY-->
 <!--FUNCTIONS_LIST_STARTS-->
 
-- /RxJS
-  - [`from`](https://vueuse.js.org/?path=/story/rxjs--from) — two wrappers around of the original functions to allow use ref objects
-  - [`toObserver`](https://vueuse.js.org/?path=/story/rxjs--toobserver) — sugar function to convert a ref in an observer
-  - [`useObservable`](https://vueuse.js.org/?path=/story/rxjs--useobservable) — use an Observable
-  - [`useSubscription`](https://vueuse.js.org/?path=/story/rxjs--usesubscription) — uses subscriptions without worry about unsubscribing to it or memory leaks
+- [`from`](https://vueuse.org/rxjs/from/) — wrappers around RxJS's [`from()`](https://rxjs.dev/api/index/function/from) and [`fromEvent()`](https://rxjs.dev/api/index/function/fromEvent) to allow them to accept `ref`s
+- [`toObserver`](https://vueuse.org/rxjs/toObserver/) — sugar function to convert a `ref` into an RxJS [Observer](https://rxjs.dev/guide/observer)
+- [`useExtractedObservable`](https://vueuse.org/rxjs/useExtractedObservable/) — use an RxJS [`Observable`](https://rxjs.dev/guide/observable) as extracted from one or more composables
+- [`useObservable`](https://vueuse.org/rxjs/useObservable/) — use an RxJS [`Observable`](https://rxjs.dev/guide/observable)
+- [`useSubject`](https://vueuse.org/rxjs/useSubject/) — bind an RxJS [`Subject`](https://rxjs.dev/guide/subject) to a `ref` and propagate value changes both ways
+- [`useSubscription`](https://vueuse.org/rxjs/useSubscription/) — use an RxJS [`Subscription`](https://rxjs.dev/guide/subscription) without worrying about unsubscribing from it or creating memory leaks
+- [`watchExtractedObservable`](https://vueuse.org/rxjs/watchExtractedObservable/) — watch the values of an RxJS [`Observable`](https://rxjs.dev/guide/observable) as extracted from one or more composables
 
 <!--FUNCTIONS_LIST_ENDS-->
 
-## 📄 Example
+## Example
 
 ```ts
-import { fromEvent, from, useObservable } from '@vueuse/rxjs'
+import { from, fromEvent, useObservable } from '@vueuse/rxjs'
 import { ref } from 'vue'
-import { of, forkJoin } from 'rxjs'
+import { forkJoin, of } from 'rxjs'
 import { ajax } from 'rxjs/ajax'
-import { take, mergeMap, concatAll, pluck, map, scan } from 'rxjs/operators'
+import { concatAll, map, mergeMap, pluck, scan, take } from 'rxjs/operators'
 
 const BASE_URL = 'https://jsonplaceholder.typicode.com'
 const button = ref<HTMLButtonElement>(null)
@@ -45,18 +45,18 @@ const posts = useObservable(
       mergeMap(({ id, userId, title }) => forkJoin({
         id: of(id),
         comments: ajax.getJSON(`${BASE_URL}/posts/${id}/comments`).pipe(
-          map(comments => comments.length)
+          map(comments => comments.length),
         ),
         username: ajax.getJSON(`${BASE_URL}/users/${userId}`).pipe(
-          pluck('username')
-        )
+          pluck('username'),
+        ),
       }), 2),
-      scan((acc, curr) => [...acc, curr], [])
-    ))
-  )
+      scan((acc, curr) => [...acc, curr], []),
+    )),
+  ),
 )
 ```
 
-## 📄 License
+## License
 
-[MIT License](https://github.com/antfu/vueuse/blob/master/LICENSE) © 2019-2020 [Anthony Fu](https://github.com/antfu)
+[MIT License](https://github.com/vueuse/vueuse/blob/master/LICENSE) © 2019-PRESENT [Anthony Fu](https://github.com/antfu)

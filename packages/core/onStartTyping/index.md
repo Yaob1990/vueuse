@@ -1,10 +1,14 @@
+---
+category: Sensors
+---
+
 # onStartTyping
 
-> Fires when users start typing on non-editable elements.
+Fires when users start typing on non-editable elements.
 
 ## Usage
 
-```html
+```vue
 <input ref="input" type="text" placeholder="Start typing to focus" />
 ```
 

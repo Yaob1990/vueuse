@@ -1,6 +1,10 @@
+---
+category: '@RxJS'
+---
+
 # useSubscription
 
-> Uses subscriptions without worry about unsubscribing to it or memory leaks.
+Use an RxJS [`Subscription`](https://rxjs.dev/guide/subscription) without worrying about unsubscribing from it or creating memory leaks.
 
 ## Usage
 
@@ -16,6 +20,6 @@ useSubscription(
     .subscribe(() => {
       count.value++
       console.log(count)
-    })
+    }),
 )
 ```

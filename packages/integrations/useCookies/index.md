@@ -1,61 +1,56 @@
+---
+category: '@Integrations'
+---
+
 # useCookies
 
-> wrapper for [`universal-cookie`](https://www.npmjs.com/package/universal-cookie).
+Wrapper for [`universal-cookie`](https://www.npmjs.com/package/universal-cookie).
 
-## Install 
+::: tip
+When using with Nuxt 3, this functions will **NOT** be auto imported in favor of Nuxt's built-in [`useCookie()`](https://v3.nuxtjs.org/api/composables/use-cookie). Use explicit import if you want to use the function from VueUse.
+:::
+
+## Install
 
 ```bash
-npm i universal-cookie
+npm i universal-cookie@^6
 ```
 
 ## Usage
 
 ### Common usage
 
-```html
+```vue
+<script>
+import { defineComponent } from 'vue'
+import { useCookies } from '@vueuse/integrations/useCookies'
+
+export default defineComponent({
+  setup() {
+    const cookies = useCookies(['locale'])
+    return {
+      cookies,
+    }
+  },
+})
+</script>
+
 <template>
   <div>
     <strong>locale</strong>: {{ cookies.get('locale') }}
     <hr>
     <pre>{{ cookies.getAll() }}</pre>
-    <button @click="cookies.set('locale', 'ru-RU')">Russian</button>
-    <button @click="cookies.set('locale', 'en-US')">English</button>
+    <button @click="cookies.set('locale', 'ru-RU')">
+      Russian
+    </button>
+    <button @click="cookies.set('locale', 'en-US')">
+      English
+    </button>
   </div>
 </template>
-
-<script>
-  import { defineComponent } from 'vue'
-  import { useCookies } from '@vueuse/integrations'
-
-  export default defineComponent({
-    setup() {
-      const cookies = useCookies(['locale'])
-      return {
-        cookies,
-      }
-    },
-  })
-</script>
 ```
 
-### SSR support ([Nuxt](https://github.com/nuxt/nuxt.js) plugin example)
-
-```ts
-// universal-cookies.js
-import { createCookies } from '@vueuse/integrations'
-
-let useUniversalCookies
-
-const cookiesPlugin = ({ req }) => {
-  useUniversalCookies = createCookies(req)
-}
-
-export default cookiesPlugin
-
-export { useUniversalCookies } // now import and call useUniversalCookies instead of useCookies
-```
-
-## `useCookies([dependencies], [options], [cookies])`
+## Options
 
 Access and modify cookies using vue composition-api.
 
@@ -78,7 +73,7 @@ Let you optionally specify a list of cookie names your component depend on or th
 
 Let you provide a `universal-cookie` instance (creates a new instance by default)
 
-### Info about methods available in the [universal-cookie api docs](https://www.npmjs.com/package/universal-cookie#api---cookies-class)
+> Info about methods available in the [universal-cookie api docs](https://www.npmjs.com/package/universal-cookie#api---cookies-class)
 
 ## `createCookies([req])`
 

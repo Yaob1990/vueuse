@@ -1,14 +1,16 @@
-import { Ref, ref } from 'vue-demi'
+import type { Ref } from 'vue-demi'
+import { ref } from 'vue-demi'
 import { useEventListener } from '../useEventListener'
-import { ConfigurableDocument, defaultDocument } from '../_configurable'
+import type { ConfigurableDocument } from '../_configurable'
+import { defaultDocument } from '../_configurable'
 
 /**
  * Reactively track `document.visibilityState`.
  *
- * @see   {@link https://vueuse.js.org/useDocumentVisibility}
- * @param options
+ * @see https://vueuse.org/useDocumentVisibility
  */
-export function useDocumentVisibility({ document = defaultDocument }: ConfigurableDocument = {}): Ref<VisibilityState> {
+export function useDocumentVisibility(options: ConfigurableDocument = {}): Ref<DocumentVisibilityState> {
+  const { document = defaultDocument } = options
   if (!document)
     return ref('visible')
 

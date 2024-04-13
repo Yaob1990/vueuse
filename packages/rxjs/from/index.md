@@ -1,14 +1,18 @@
+---
+category: '@RxJS'
+---
+
 # from / fromEvent
 
-> Two wrappers around of the original functions to allow use ref objects
+Wrappers around RxJS's [`from()`](https://rxjs.dev/api/index/function/from) and [`fromEvent()`](https://rxjs.dev/api/index/function/fromEvent) to allow them to accept `ref`s.
 
 ## Usage
 
 ```ts
 import { ref } from 'vue'
-import { toObserver, fromEvent, from } from '@vueuse/rxjs'
+import { from, fromEvent, toObserver, useSubscription } from '@vueuse/rxjs'
 import { interval } from 'rxjs'
-import { mapTo, takeUntil, withLatestFrom, map } from 'rxjs/operators'
+import { map, mapTo, takeUntil, withLatestFrom } from 'rxjs/operators'
 
 const count = ref(0)
 const button = ref<HTMLButtonElement>(null)
@@ -18,9 +22,12 @@ useSubscription(
     .pipe(
       mapTo(1),
       takeUntil(fromEvent(button, 'click')),
-      withLatestFrom(from(count).pipe(startWith(0))),
-      map(([total, curr]) => curr + total),
+      withLatestFrom(from(count, {
+        immediate: true,
+        deep: false,
+      })),
+      map(([curr, total]) => curr + total),
     )
-    .subscribe(toObserver(count)) // same as ).subscribe(val => (count.value = val))
+    .subscribe(toObserver(count)), // same as ).subscribe(val => (count.value = val))
 )
 ```

@@ -1,6 +1,10 @@
+---
+category: Sensors
+---
+
 # useDeviceMotion
 
-> Reactive [DeviceMotionEvent](https://developer.mozilla.org/en-US/docs/Web/API/DeviceMotionEvent). Provide web developers with information about the speed of changes for the device's position and orientation.
+Reactive [DeviceMotionEvent](https://developer.mozilla.org/en-US/docs/Web/API/DeviceMotionEvent). Provide web developers with information about the speed of changes for the device's position and orientation.
 
 ## Usage
 
@@ -23,3 +27,13 @@ const {
 | interval                     | `Number` | A number representing the interval of time, in milliseconds, at which data is obtained from the device..             |
 
 You can find [more information about the state on the MDN](https://developer.mozilla.org/en-US/docs/Web/API/DeviceMotionEvent#Properties).
+
+## Component Usage
+
+```vue
+<template>
+  <UseDeviceMotion v-slot="{ acceleration }">
+    Acceleration: {{ acceleration }}
+  </UseDeviceMotion>
+</template>
+```

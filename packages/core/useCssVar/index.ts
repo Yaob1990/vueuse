@@ -1,37 +1,67 @@
-import { ref, watch, unref } from 'vue-demi'
-import { MaybeRef, tryOnMounted } from '@vueuse/shared'
-import { ConfigurableWindow, defaultWindow } from '../_configurable'
+import { computed, ref, watch } from 'vue-demi'
+import type { MaybeRefOrGetter } from '@vueuse/shared'
+import { toValue } from '@vueuse/shared'
+import { useMutationObserver } from '../useMutationObserver'
+import type { ConfigurableWindow } from '../_configurable'
+import { defaultWindow } from '../_configurable'
+import type { MaybeElementRef } from '../unrefElement'
+import { unrefElement } from '../unrefElement'
+
+export interface UseCssVarOptions extends ConfigurableWindow {
+  initialValue?: string
+  /**
+   * Use MutationObserver to monitor variable changes
+   * @default false
+   */
+  observe?: boolean
+}
 
 /**
  * Manipulate CSS variables.
  *
- * @see   {@link https://vueuse.js.org/useCssVar}
+ * @see https://vueuse.org/useCssVar
  * @param prop
- * @param el
+ * @param target
  * @param options
  */
 export function useCssVar(
-  prop: string,
-  el?: MaybeRef<HTMLElement | null>,
-  { window = defaultWindow }: ConfigurableWindow = {},
+  prop: MaybeRefOrGetter<string>,
+  target?: MaybeElementRef,
+  options: UseCssVarOptions = {},
 ) {
-  if (!window)
-    return ref('')
+  const { window = defaultWindow, initialValue = '', observe = false } = options
+  const variable = ref(initialValue)
+  const elRef = computed(() => unrefElement(target) || window?.document?.documentElement)
 
-  const varRef = ref('')
-  const elRef = ref(unref(el) || window.document.documentElement)
+  function updateCssVar() {
+    const key = toValue(prop)
+    const el = toValue(elRef)
+    if (el && window) {
+      const value = window.getComputedStyle(el).getPropertyValue(key)?.trim()
+      variable.value = value || initialValue
+    }
+  }
 
-  tryOnMounted(() => {
-    varRef.value = window.getComputedStyle(elRef.value).getPropertyValue(prop)
-  })
+  if (observe) {
+    useMutationObserver(elRef, updateCssVar, {
+      attributeFilter: ['style', 'class'],
+      window,
+    })
+  }
 
   watch(
-    varRef,
+    [elRef, () => toValue(prop)],
+    updateCssVar,
+    { immediate: true },
+  )
+
+  watch(
+    variable,
     (val) => {
       if (elRef.value?.style)
-        elRef.value.style.setProperty(prop, val)
+        elRef.value.style.setProperty(toValue(prop), val)
     },
   )
 
-  return varRef
+  return variable
 }

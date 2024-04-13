@@ -1,12 +1,25 @@
-import { ref, unref, watch } from 'vue-demi'
-import { MaybeRef, tryOnUnmounted } from '@vueuse/shared'
-import { ConfigurableWindow, defaultWindow } from '../_configurable'
+import type { Ref } from 'vue-demi'
+import { computed, ref, watch } from 'vue-demi'
+import type { MaybeRefOrGetter, Pausable } from '@vueuse/shared'
+import { noop, notNullish, toValue, tryOnScopeDispose } from '@vueuse/shared'
+import type { ConfigurableWindow } from '../_configurable'
+import { defaultWindow } from '../_configurable'
+import type { MaybeComputedElementRef, MaybeElement } from '../unrefElement'
+import { unrefElement } from '../unrefElement'
+import { useSupported } from '../useSupported'
 
-export interface IntersectionObserverOptions extends ConfigurableWindow {
+export interface UseIntersectionObserverOptions extends ConfigurableWindow {
+  /**
+   * Start the IntersectionObserver immediately on creation
+   *
+   * @default true
+   */
+  immediate?: boolean
+
   /**
    * The Element or Document whose bounds are used as the bounding box when testing for intersection.
    */
-  root?: MaybeRef<Element|null|undefined>
+  root?: MaybeComputedElementRef
 
   /**
    * A string which specifies a set of offsets to add to the root's bounding_box when calculating intersections.
@@ -19,63 +32,90 @@ export interface IntersectionObserverOptions extends ConfigurableWindow {
   threshold?: number | number[]
 }
 
+export interface UseIntersectionObserverReturn extends Pausable {
+  isSupported: Ref<boolean>
+  stop: () => void
+}
+
 /**
  * Detects that a target element's visibility.
  *
- * @see   {@link https://vueuse.js.org/useIntersectionObserver}
+ * @see https://vueuse.org/useIntersectionObserver
  * @param target
  * @param callback
  * @param options
  */
 export function useIntersectionObserver(
-  target: MaybeRef<Element | null | undefined>,
+  target: MaybeComputedElementRef | MaybeRefOrGetter<MaybeElement[]> | MaybeComputedElementRef[],
   callback: IntersectionObserverCallback,
-  options: IntersectionObserverOptions = {},
-) {
+  options: UseIntersectionObserverOptions = {},
+): UseIntersectionObserverReturn {
   const {
     root,
     rootMargin = '0px',
     threshold = 0.1,
     window = defaultWindow,
+    immediate = true,
   } = options
 
-  let observer: IntersectionObserver | undefined
-  const targetRef = ref(target)
-  const isSupported = window && 'IntersectionObserver' in window
-
-  const cleanup = () => {
-    if (observer) {
-      observer.disconnect()
-      observer = undefined
-    }
-  }
-
-  const stopWatch = watch(targetRef, (newValue) => {
-    cleanup()
-
-    if (isSupported && window && newValue) {
-      // @ts-expect-error missing type
-      observer = new window.IntersectionObserver(
-        callback,
-        {
-          root: unref(root),
-          rootMargin,
-          threshold,
-        },
-      )
-      observer!.observe(newValue)
-    }
+  const isSupported = useSupported(() => window && 'IntersectionObserver' in window)
+  const targets = computed(() => {
+    const _target = toValue(target)
+    return (Array.isArray(_target) ? _target : [_target]).map(unrefElement).filter(notNullish)
   })
+
+  let cleanup = noop
+  const isActive = ref(immediate)
+
+  const stopWatch = isSupported.value
+    ? watch(
+      () => [targets.value, unrefElement(root), isActive.value] as const,
+      ([targets, root]) => {
+        cleanup()
+        if (!isActive.value)
+          return
+
+        if (!targets.length)
+          return
+
+        const observer = new IntersectionObserver(
+          callback,
+          {
+            root: unrefElement(root),
+            rootMargin,
+            threshold,
+          },
+        )
+
+        targets.forEach(el => el && observer.observe(el))
+
+        cleanup = () => {
+          observer.disconnect()
+          cleanup = noop
+        }
+      },
+      { immediate, flush: 'post' },
+    )
+    : noop
 
   const stop = () => {
     cleanup()
     stopWatch()
+    isActive.value = false
   }
 
-  tryOnUnmounted(stop)
+  tryOnScopeDispose(stop)
 
   return {
     isSupported,
+    isActive,
+    pause() {
+      cleanup()
+      isActive.value = false
+    },
+    resume() {
+      isActive.value = true
+    },
     stop,
   }
 }

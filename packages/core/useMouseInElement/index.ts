@@ -1,33 +1,42 @@
-import { MaybeRef } from '@vueuse/shared'
 import { ref, watch } from 'vue-demi'
-import { MouseOptions, useMouse } from '../useMouse'
+import type { MaybeElementRef } from '../unrefElement'
+import { unrefElement } from '../unrefElement'
+import type { UseMouseOptions } from '../useMouse'
+import { useMouse } from '../useMouse'
+import { defaultWindow } from '../_configurable'
+import { useEventListener } from '../useEventListener'
 
-export interface MouseInElementOptions extends MouseOptions {
+export interface MouseInElementOptions extends UseMouseOptions {
   handleOutside?: boolean
 }
 
 /**
  * Reactive mouse position related to an element.
  *
- * @see   {@link https://vueuse.js.org/useMouseInElement}
+ * @see https://vueuse.org/useMouseInElement
  * @param target
  * @param options
  */
 export function useMouseInElement(
-  target?: MaybeRef<Element | null | undefined>,
+  target?: MaybeElementRef,
   options: MouseInElementOptions = {},
 ) {
-  const { handleOutside = true } = options
+  const {
+    handleOutside = true,
+    window = defaultWindow,
+  } = options
+  const type = options.type || 'page'
+
   const { x, y, sourceType } = useMouse(options)
 
-  const targetRef = ref(target || window?.document.body)
+  const targetRef = ref(target ?? window?.document.body)
   const elementX = ref(0)
   const elementY = ref(0)
   const elementPositionX = ref(0)
   const elementPositionY = ref(0)
   const elementHeight = ref(0)
   const elementWidth = ref(0)
-  const isOutside = ref(false)
+  const isOutside = ref(true)
 
   let stop = () => {}
 
@@ -35,7 +44,7 @@ export function useMouseInElement(
     stop = watch(
       [targetRef, x, y],
       () => {
-        const el = targetRef.value
+        const el = unrefElement(targetRef)
         if (!el)
           return
 
@@ -46,14 +55,16 @@ export function useMouseInElement(
           height,
         } = el.getBoundingClientRect()
 
-        elementPositionX.value = left + window.pageXOffset
-        elementPositionY.value = top + window.pageYOffset
+        elementPositionX.value = left + (type === 'page' ? window.pageXOffset : 0)
+        elementPositionY.value = top + (type === 'page' ? window.pageYOffset : 0)
         elementHeight.value = height
         elementWidth.value = width
 
         const elX = x.value - elementPositionX.value
         const elY = y.value - elementPositionY.value
-        isOutside.value = elX < 0 || elY < 0 || elX > elementWidth.value || elY > elementHeight.value
+        isOutside.value = width === 0 || height === 0
+        || elX < 0 || elY < 0
+        || elX > width || elY > height
 
         if (handleOutside || !isOutside.value) {
           elementX.value = elX
@@ -62,6 +73,10 @@ export function useMouseInElement(
       },
       { immediate: true },
     )
+
+    useEventListener(document, 'mouseleave', () => {
+      isOutside.value = true
+    })
   }
 
   return {
@@ -78,3 +93,5 @@ export function useMouseInElement(
     stop,
   }
 }
+
+export type UseMouseInElementReturn = ReturnType<typeof useMouseInElement>

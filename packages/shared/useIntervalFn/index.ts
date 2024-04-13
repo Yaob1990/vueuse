@@ -1,17 +1,23 @@
-import { ref } from 'vue-demi'
-import { tryOnUnmounted } from '../tryOnUnmounted'
-import { Pausable, Fn } from '../utils'
+import { isRef, ref, watch } from 'vue-demi'
+import { toValue } from '../toValue'
+import { tryOnScopeDispose } from '../tryOnScopeDispose'
+import type { Fn, MaybeRefOrGetter, Pausable } from '../utils'
+import { isClient } from '../utils'
 
-export interface IntervalFnReturn extends Pausable {
+export interface UseIntervalFnOptions {
   /**
-   * @deprecated use pause() instead
+   * Start the timer immediately
+   *
+   * @default true
    */
-  stop: Fn
+  immediate?: boolean
 
   /**
-   * @deprecated use resume() instead
+   * Execute the callback immediate after calling this function
+   *
+   * @default false
    */
-  start: Fn
+  immediateCallback?: boolean
 }
 
 /**
@@ -19,10 +25,15 @@ export interface IntervalFnReturn extends Pausable {
  *
  * @param cb
  * @param interval
- * @param immediate
+ * @param options
  */
-export function useIntervalFn(cb: Fn, interval = 1000, immediate = true): IntervalFnReturn {
-  let timer: any = null
+export function useIntervalFn(cb: Fn, interval: MaybeRefOrGetter<number> = 1000, options: UseIntervalFnOptions = {}): Pausable {
+  const {
+    immediate = true,
+    immediateCallback = false,
+  } = options
+
+  let timer: ReturnType<typeof setInterval> | null = null
   const isActive = ref(false)
 
   function clean() {
@@ -38,21 +49,32 @@ export function useIntervalFn(cb: Fn, interval = 1000, immediate = true): Interv
   }
 
   function resume() {
+    const intervalValue = toValue(interval)
+    if (intervalValue <= 0)
+      return
     isActive.value = true
+    if (immediateCallback)
+      cb()
     clean()
-    timer = setInterval(cb, interval)
+    timer = setInterval(cb, intervalValue)
   }
 
-  if (immediate)
+  if (immediate && isClient)
     resume()
 
-  tryOnUnmounted(pause)
+  if (isRef(interval) || typeof interval === 'function') {
+    const stopWatch = watch(interval, () => {
+      if (isActive.value && isClient)
+        resume()
+    })
+    tryOnScopeDispose(stopWatch)
+  }
+
+  tryOnScopeDispose(pause)
 
   return {
     isActive,
     pause,
     resume,
-    start: resume,
-    stop: pause,
   }
 }

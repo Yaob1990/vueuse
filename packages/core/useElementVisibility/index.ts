@@ -1,46 +1,48 @@
-import { tryOnMounted } from '@vueuse/shared'
-import { ref, Ref, watch } from 'vue-demi'
-import { useWindowScroll } from '../useWindowScroll'
-import { ConfigurableWindow, defaultWindow } from '../_configurable'
+import type { MaybeRefOrGetter } from '@vueuse/shared'
+import { ref } from 'vue-demi'
+import type { MaybeComputedElementRef } from '../unrefElement'
+import type { UseIntersectionObserverOptions } from '../useIntersectionObserver'
+import { useIntersectionObserver } from '../useIntersectionObserver'
+import type { ConfigurableWindow } from '../_configurable'
+import { defaultWindow } from '../_configurable'
+
+export interface UseElementVisibilityOptions extends ConfigurableWindow, Pick<UseIntersectionObserverOptions, 'threshold'> {
+  scrollTarget?: MaybeRefOrGetter<HTMLElement | undefined | null>
+}
 
 /**
  * Tracks the visibility of an element within the viewport.
  *
- * @see   {@link https://vueuse.js.org/useElementVisibility}
- * @param element
- * @param options
+ * @see https://vueuse.org/useElementVisibility
  */
 export function useElementVisibility(
-  element: Ref<Element|null|undefined>,
-  { window = defaultWindow }: ConfigurableWindow = {},
+  element: MaybeComputedElementRef,
+  options: UseElementVisibilityOptions = {},
 ) {
-  const { x, y } = useWindowScroll({ window })
+  const { window = defaultWindow, scrollTarget, threshold = 0 } = options
   const elementIsVisible = ref(false)
 
-  const testBoundingClientRect = () => {
-    if (!window)
-      return
+  useIntersectionObserver(
+    element,
+    (intersectionObserverEntries) => {
+      let isIntersecting = elementIsVisible.value
 
-    const document = window.document
-    if (!element.value) {
-      elementIsVisible.value = false
-    }
-    else {
-      const rect = element.value.getBoundingClientRect()
-
-      elementIsVisible.value = (
-        rect.top <= (window.innerHeight || document.documentElement.clientHeight)
-          && rect.left <= (window.innerWidth || document.documentElement.clientWidth)
-          && rect.bottom >= 0
-          && rect.right >= 0
-      )
-    }
-  }
-
-  tryOnMounted(testBoundingClientRect)
-
-  watch(x, testBoundingClientRect)
-  watch(y, testBoundingClientRect)
+      // Get the latest value of isIntersecting based on the entry time
+      let latestTime = 0
+      for (const entry of intersectionObserverEntries) {
+        if (entry.time >= latestTime) {
+          latestTime = entry.time
+          isIntersecting = entry.isIntersecting
+        }
+      }
+      elementIsVisible.value = isIntersecting
+    },
+    {
+      root: scrollTarget,
+      window,
+      threshold,
+    },
+  )
 
   return elementIsVisible
 }

@@ -1,6 +1,10 @@
+---
+category: Animation
+---
+
 # useInterval
 
-> Reactive counter increases on every interval
+Reactive counter increases on every interval
 
 ## Usage
 
@@ -8,5 +12,9 @@
 import { useInterval } from '@vueuse/core'
 
 // count will increase every 200ms
-const { counter } = useInterval(200)
+const counter = useInterval(200)
+```
+
+```ts
+const { counter, reset, pause, resume } = useInterval(200, { controls: true })
 ```

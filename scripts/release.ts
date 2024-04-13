@@ -1,9 +1,11 @@
-import { execSync } from 'child_process'
+import { execSync } from 'node:child_process'
+import process from 'node:process'
 import { readJSONSync } from 'fs-extra'
+import { updateContributors } from './utils'
 
 const { version: oldVersion } = readJSONSync('package.json')
 
-execSync('npx bump --preid rc', { stdio: 'inherit' })
+execSync('bumpp --no-commit --no-tag --no-push', { stdio: 'inherit' })
 
 const { version } = readJSONSync('package.json')
 
@@ -12,7 +14,10 @@ if (oldVersion === version) {
   process.exit()
 }
 
-execSync('npm run prepare', { stdio: 'inherit' })
+updateContributors()
+
+execSync('npm run build:types', { stdio: 'inherit' })
+execSync('npm run update', { stdio: 'inherit' })
 execSync('git add .', { stdio: 'inherit' })
 
 execSync(`git commit -m "chore: release v${version}"`, { stdio: 'inherit' })

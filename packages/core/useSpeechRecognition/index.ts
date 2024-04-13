@@ -1,10 +1,16 @@
 // ported from https://www.reddit.com/r/vuejs/comments/jksizl/speech_recognition_as_a_vue_3_hook
 // by https://github.com/wobsoriano
 
-import { tryOnUnmounted } from '@vueuse/shared'
-import { ref, watch } from 'vue-demi'
+import type { MaybeRefOrGetter } from '@vueuse/shared'
+import { toRef, toValue, tryOnScopeDispose } from '@vueuse/shared'
+import type { Ref } from 'vue-demi'
+import { ref, shallowRef, watch } from 'vue-demi'
+import { useSupported } from '../useSupported'
+import type { ConfigurableWindow } from '../_configurable'
+import { defaultWindow } from '../_configurable'
+import type { SpeechRecognition, SpeechRecognitionErrorEvent } from './types'
 
-export interface SpeechRecognitionOptions {
+export interface UseSpeechRecognitionOptions extends ConfigurableWindow {
   /**
    * Controls whether continuous results are returned for each recognition, or only a single result.
    *
@@ -18,31 +24,32 @@ export interface SpeechRecognitionOptions {
    */
   interimResults?: boolean
   /**
-   * Langauge for SpeechRecognition
+   * Language for SpeechRecognition
    *
    * @default 'en-US'
    */
-  lang?: string
+  lang?: MaybeRefOrGetter<string>
 }
 
 /**
  * Reactive SpeechRecognition.
  *
- * @see   {@link https://vueuse.js.org/useSpeechRecognition}
- * @see   {@link https://developer.mozilla.org/en-US/docs/Web/API/SpeechRecognition|SpeechRecognition}
+ * @see https://vueuse.org/useSpeechRecognition
+ * @see https://developer.mozilla.org/en-US/docs/Web/API/SpeechRecognition SpeechRecognition
  * @param options
  */
-export function useSpeechRecognition(options: SpeechRecognitionOptions = {}) {
+export function useSpeechRecognition(options: UseSpeechRecognitionOptions = {}) {
   const {
-    lang = 'en-US',
     interimResults = true,
     continuous = true,
+    window = defaultWindow,
   } = options
 
+  const lang = toRef(options.lang || 'en-US')
   const isListening = ref(false)
   const isFinal = ref(false)
   const result = ref('')
-  const error = ref(null)
+  const error = shallowRef(undefined) as Ref<SpeechRecognitionErrorEvent | undefined>
 
   const toggle = (value = !isListening.value) => {
     isListening.value = value
@@ -56,21 +63,26 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = {}) {
     isListening.value = false
   }
 
-  const SpeechRecognition = window.SpeechRecognition || (window as any).webkitSpeechRecognition
-  const isSupported = Boolean(SpeechRecognition)
+  const SpeechRecognition = window && ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)
+  const isSupported = useSupported(() => SpeechRecognition)
 
   let recognition: SpeechRecognition | undefined
 
-  if (isSupported) {
-    recognition = new SpeechRecognition()
+  if (isSupported.value) {
+    recognition = new SpeechRecognition() as SpeechRecognition
 
     recognition.continuous = continuous
     recognition.interimResults = interimResults
-    recognition.lang = lang
+    recognition.lang = toValue(lang)
 
     recognition.onstart = () => {
       isFinal.value = false
     }
+
+    watch(lang, (lang) => {
+      if (recognition && !isListening.value)
+        recognition.lang = lang
+    })
 
     recognition.onresult = (event) => {
       const transcript = Array.from(event.results)
@@ -82,15 +94,16 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = {}) {
         .join('')
 
       result.value = transcript
-      error.value = null
+      error.value = undefined
     }
 
     recognition.onerror = (event) => {
-      error.value = event.error
+      error.value = event
     }
 
     recognition.onend = () => {
       isListening.value = false
+      recognition!.lang = toValue(lang)
     }
 
     watch(isListening, () => {
@@ -101,7 +114,7 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = {}) {
     })
   }
 
-  tryOnUnmounted(() => {
+  tryOnScopeDispose(() => {
     isListening.value = false
   })
 
@@ -118,3 +131,5 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = {}) {
     stop,
   }
 }
+
+export type UseSpeechRecognitionReturn = ReturnType<typeof useSpeechRecognition>

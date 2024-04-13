@@ -2,7 +2,9 @@
 
 import { ref } from 'vue-demi'
 import { useEventListener } from '../useEventListener'
-import { ConfigurableNavigator, defaultNavigator } from '../_configurable'
+import { useSupported } from '../useSupported'
+import type { ConfigurableNavigator } from '../_configurable'
+import { defaultNavigator } from '../_configurable'
 
 export interface BatteryManager extends EventTarget {
   charging: boolean
@@ -18,13 +20,13 @@ type NavigatorWithBattery = Navigator & {
 /**
  * Reactive Battery Status API.
  *
- * @see   {@link https://vueuse.js.org/useBattery}
- * @param options
+ * @see https://vueuse.org/useBattery
  */
-export function useBattery({ navigator = defaultNavigator }: ConfigurableNavigator = {}) {
+export function useBattery(options: ConfigurableNavigator = {}) {
+  const { navigator = defaultNavigator } = options
   const events = ['chargingchange', 'chargingtimechange', 'dischargingtimechange', 'levelchange']
 
-  const isSupported = navigator && 'getBattery' in navigator
+  const isSupported = useSupported(() => navigator && 'getBattery' in navigator && typeof navigator.getBattery === 'function')
 
   const charging = ref(false)
   const chargingTime = ref(0)
@@ -40,14 +42,13 @@ export function useBattery({ navigator = defaultNavigator }: ConfigurableNavigat
     level.value = this.level
   }
 
-  if (isSupported) {
+  if (isSupported.value) {
     (navigator as NavigatorWithBattery)
       .getBattery()
       .then((_battery) => {
         battery = _battery
         updateBatteryInfo.call(battery)
-        for (const event of events)
-          useEventListener(battery, event, updateBatteryInfo, undefined)
+        useEventListener(battery, events, updateBatteryInfo, { passive: true })
       })
   }
 
@@ -59,3 +60,5 @@ export function useBattery({ navigator = defaultNavigator }: ConfigurableNavigat
     level,
   }
 }
+
+export type UseBatteryReturn = ReturnType<typeof useBattery>

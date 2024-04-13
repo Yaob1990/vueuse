@@ -1,6 +1,10 @@
+---
+category: Browser
+---
+
 # useFavicon
 
-> Reactive favicon
+Reactive favicon
 
 ## Usage
 
@@ -34,4 +38,3 @@ const icon = useFavicon(source)
 
 console.log(icon === source) // true
 ```
-

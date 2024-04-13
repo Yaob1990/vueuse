@@ -1,8 +1,10 @@
-import { Fn, MaybeRef } from '@vueuse/shared'
-import { ref, watch } from 'vue-demi'
+import { computed, ref } from 'vue-demi'
+import type { MaybeComputedElementRef } from '../unrefElement'
+import { unrefElement } from '../unrefElement'
 import { useEventListener } from '../useEventListener'
-import { MouseSourceType } from '../useMouse'
-import { ConfigurableWindow, defaultWindow } from '../_configurable'
+import type { UseMouseSourceType } from '../useMouse'
+import type { ConfigurableWindow } from '../_configurable'
+import { defaultWindow } from '../_configurable'
 
 export interface MousePressedOptions extends ConfigurableWindow {
   /**
@@ -11,6 +13,21 @@ export interface MousePressedOptions extends ConfigurableWindow {
    * @default true
    */
   touch?: boolean
+
+  /**
+   * Listen to `dragstart` `drop` and `dragend` events
+   *
+   * @default true
+   */
+  drag?: boolean
+
+  /**
+   * Add event listerners with the `capture` option set to `true`
+   * (see [MDN](https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener#capture))
+   *
+   * @default false
+   */
+  capture?: boolean
 
   /**
    * Initial values
@@ -22,72 +39,62 @@ export interface MousePressedOptions extends ConfigurableWindow {
   /**
    * Element target to be capture the click
    */
-  target?: MaybeRef<Element | null |undefined>
+  target?: MaybeComputedElementRef
 }
 
 /**
  * Reactive mouse position.
  *
- * @see   {@link https://vueuse.js.org/useMousePressed}
+ * @see https://vueuse.org/useMousePressed
  * @param options
  */
 export function useMousePressed(options: MousePressedOptions = {}) {
   const {
     touch = true,
+    drag = true,
+    capture = false,
     initialValue = false,
     window = defaultWindow,
   } = options
 
-  const target = ref(options.target)
   const pressed = ref(initialValue)
-  const sourceType = ref<MouseSourceType>(null)
+  const sourceType = ref<UseMouseSourceType>(null)
 
-  let listeners: Fn[] = []
-
-  if (window) {
-    const cleanup = () => {
-      listeners.forEach(f => f())
-      listeners = []
+  if (!window) {
+    return {
+      pressed,
+      sourceType,
     }
-    const onReleased = () => {
-      pressed.value = false
-      sourceType.value = null
-    }
+  }
 
-    watch(
-      target,
-      () => {
-        cleanup()
+  const onPressed = (srcType: UseMouseSourceType) => () => {
+    pressed.value = true
+    sourceType.value = srcType
+  }
+  const onReleased = () => {
+    pressed.value = false
+    sourceType.value = null
+  }
 
-        const t = target.value || window
-        listeners.push(useEventListener(t, 'mousedown',
-          () => {
-            pressed.value = true
-            sourceType.value = 'mouse'
-          },
-          { passive: true },
-        ))
+  const target = computed(() => unrefElement(options.target) || window)
 
-        if (touch) {
-          listeners.push(useEventListener(t, 'touchstart',
-            () => {
-              pressed.value = true
-              sourceType.value = 'touch'
-            },
-            { passive: true },
-          ))
-        }
-      },
-      { immediate: true },
-    )
+  useEventListener(target, 'mousedown', onPressed('mouse'), { passive: true, capture })
 
-    useEventListener(window, 'mouseleave', onReleased, { passive: true })
-    useEventListener(window, 'mouseup', onReleased, { passive: true })
+  useEventListener(window, 'mouseleave', onReleased, { passive: true, capture })
+  useEventListener(window, 'mouseup', onReleased, { passive: true, capture })
 
-    if (touch) {
-      useEventListener(window, 'touchend', onReleased, { passive: true })
-      useEventListener(window, 'touchcancel', onReleased, { passive: true })
-    }
+  if (drag) {
+    useEventListener(target, 'dragstart', onPressed('mouse'), { passive: true, capture })
+
+    useEventListener(window, 'drop', onReleased, { passive: true, capture })
+    useEventListener(window, 'dragend', onReleased, { passive: true, capture })
+  }
+
+  if (touch) {
+    useEventListener(target, 'touchstart', onPressed('touch'), { passive: true, capture })
+
+    useEventListener(window, 'touchend', onReleased, { passive: true, capture })
+    useEventListener(window, 'touchcancel', onReleased, { passive: true, capture })
   }
 
   return {
@@ -95,3 +102,5 @@ export function useMousePressed(options: MousePressedOptions = {}) {
     sourceType,
   }
 }
+
+export type UseMousePressedReturn = ReturnType<typeof useMousePressed>

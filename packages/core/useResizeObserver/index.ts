@@ -1,6 +1,10 @@
-import { MaybeRef, tryOnUnmounted } from '@vueuse/shared'
-import { ref, watch } from 'vue-demi'
-import { ConfigurableWindow, defaultWindow } from '../_configurable'
+import { tryOnScopeDispose } from '@vueuse/shared'
+import { computed, watch } from 'vue-demi'
+import type { MaybeComputedElementRef } from '../unrefElement'
+import { unrefElement } from '../unrefElement'
+import { useSupported } from '../useSupported'
+import type { ConfigurableWindow } from '../_configurable'
+import { defaultWindow } from '../_configurable'
 
 export interface ResizeObserverSize {
   readonly inlineSize: number
@@ -15,43 +19,41 @@ export interface ResizeObserverEntry {
   readonly devicePixelContentBoxSize?: ReadonlyArray<ResizeObserverSize>
 }
 
-// eslint-disable-next-line no-use-before-define
 export type ResizeObserverCallback = (entries: ReadonlyArray<ResizeObserverEntry>, observer: ResizeObserver) => void
 
-export interface ResizeObserverOptions extends ConfigurableWindow {
+export interface UseResizeObserverOptions extends ConfigurableWindow {
   /**
    * Sets which box model the observer will observe changes to. Possible values
-   * are `content-box` (the default), and `border-box`.
+   * are `content-box` (the default), `border-box` and `device-pixel-content-box`.
    *
    * @default 'content-box'
    */
-  box?: 'content-box' | 'border-box'
+  box?: ResizeObserverBoxOptions
 }
 
 declare class ResizeObserver {
-  constructor(callback: ResizeObserverCallback);
-  disconnect(): void;
-  observe(target: Element, options?: ResizeObserverOptions): void;
-  unobserve(target: Element): void;
+  constructor(callback: ResizeObserverCallback)
+  disconnect(): void
+  observe(target: Element, options?: UseResizeObserverOptions): void
+  unobserve(target: Element): void
 }
 
 /**
  * Reports changes to the dimensions of an Element's content or the border-box
  *
- * @see   {@link https://vueuse.js.org/useResizeObserver}
+ * @see https://vueuse.org/useResizeObserver
  * @param target
  * @param callback
  * @param options
  */
 export function useResizeObserver(
-  target: MaybeRef<Element | null | undefined>,
+  target: MaybeComputedElementRef | MaybeComputedElementRef[],
   callback: ResizeObserverCallback,
-  options: ResizeObserverOptions = {},
+  options: UseResizeObserverOptions = {},
 ) {
   const { window = defaultWindow, ...observerOptions } = options
   let observer: ResizeObserver | undefined
-  const targetRef = ref(target)
-  const isSupported = window && 'ResizeObserver' in window
+  const isSupported = useSupported(() => window && 'ResizeObserver' in window)
 
   const cleanup = () => {
     if (observer) {
@@ -60,25 +62,35 @@ export function useResizeObserver(
     }
   }
 
-  const stopWatch = watch(targetRef, (newValue) => {
-    cleanup()
+  const targets = computed(() =>
+    Array.isArray(target)
+      ? target.map(el => unrefElement(el))
+      : [unrefElement(target)])
 
-    if (isSupported && window && newValue) {
-      // @ts-expect-error missing type
-      observer = new window.ResizeObserver(callback)
-      observer!.observe(newValue, observerOptions)
-    }
-  }, { immediate: true })
+  const stopWatch = watch(
+    targets,
+    (els) => {
+      cleanup()
+      if (isSupported.value && window) {
+        observer = new ResizeObserver(callback)
+        for (const _el of els)
+          _el && observer!.observe(_el, observerOptions)
+      }
+    },
+    { immediate: true, flush: 'post' },
+  )
 
   const stop = () => {
     cleanup()
     stopWatch()
   }
 
-  tryOnUnmounted(stop)
+  tryOnScopeDispose(stop)
 
   return {
     isSupported,
     stop,
   }
 }
+
+export type UseResizeObserverReturn = ReturnType<typeof useResizeObserver>

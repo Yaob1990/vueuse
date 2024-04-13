@@ -1,42 +1,72 @@
-import path from 'path'
-import assert from 'assert'
+import path from 'node:path'
+import assert from 'node:assert'
+import { execSync as exec } from 'node:child_process'
+import process from 'node:process'
+import { fileURLToPath } from 'node:url'
 import fs from 'fs-extra'
-import consola from 'consola'
-import { activePackages } from './packages'
-import { execSync as exec } from 'child_process'
+import fg from 'fast-glob'
+import { consola } from 'consola'
+import { metadata } from '../packages/metadata/metadata'
+import { packages } from '../meta/packages'
+import { version } from '../package.json'
+import { updateImport } from './utils'
 
+const __dirname = fileURLToPath(new URL('.', import.meta.url))
 const rootDir = path.resolve(__dirname, '..')
+const watch = process.argv.includes('--watch')
 
-const metaFiles = [
+const FILES_COPY_ROOT = [
   'LICENSE',
+]
+
+const FILES_COPY_LOCAL = [
+  'README.md',
+  'index.json',
+  '*.cjs',
+  '*.mjs',
+  '*.d.ts',
+  '*.d.cts',
+  '*.d.mts',
 ]
 
 assert(process.cwd() !== __dirname)
 
 async function buildMetaFiles() {
-  for (const { name } of activePackages) {
-    const packageDist = path.resolve(__dirname, '..', 'packages', name)
-
-    for (const metaFile of metaFiles)
-      await fs.copyFile(path.join(rootDir, metaFile), path.join(packageDist, metaFile))
+  for (const { name } of packages) {
+    const packageRoot = path.resolve(rootDir, 'packages', name)
+    const packageDist = path.resolve(packageRoot, 'dist')
 
     if (name === 'core')
       await fs.copyFile(path.join(rootDir, 'README.md'), path.join(packageDist, 'README.md'))
+
+    for (const file of FILES_COPY_ROOT)
+      await fs.copyFile(path.join(rootDir, file), path.join(packageDist, file))
+
+    const files = await fg(FILES_COPY_LOCAL, { cwd: packageRoot })
+    for (const file of files)
+      await fs.copyFile(path.join(packageRoot, file), path.join(packageDist, file))
+
+    const packageJSON = await fs.readJSON(path.join(packageRoot, 'package.json'))
+    for (const key of Object.keys(packageJSON.dependencies || {})) {
+      if (key.startsWith('@vueuse/'))
+        packageJSON.dependencies[key] = version
+    }
+    await fs.writeJSON(path.join(packageDist, 'package.json'), packageJSON, { spaces: 2 })
   }
 }
 
 async function build() {
   consola.info('Clean up')
-  exec('yarn run clean', { stdio: 'inherit' })
+  exec('pnpm run clean', { stdio: 'inherit' })
 
   consola.info('Generate Imports')
-  exec('yarn run prepare', { stdio: 'inherit' })
+  await updateImport(metadata)
 
   consola.info('Rollup')
-  exec('yarn run build:rollup', { stdio: 'inherit' })
+  exec(`pnpm run build:rollup${watch ? ' -- --watch' : ''}`, { stdio: 'inherit' })
 
   consola.info('Fix types')
-  exec('yarn run types:fix', { stdio: 'inherit' })
+  exec('pnpm run types:fix', { stdio: 'inherit' })
 
   await buildMetaFiles()
 }
@@ -54,6 +84,3 @@ async function cli() {
 export {
   build,
 }
-
-if (require.main === module)
-  cli()

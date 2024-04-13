@@ -1,16 +1,14 @@
-import { tryOnMounted, tryOnUnmounted } from '@vueuse/shared'
+import type { IncomingMessage } from 'node:http'
+import { tryOnScopeDispose } from '@vueuse/shared'
 import { ref } from 'vue-demi'
 import Cookie from 'universal-cookie'
-import type { IncomingMessage } from 'http'
 
-type RawCookies = {
-  [name: string]: string
-}
+type RawCookies = Record<string, string>
 
 /**
  * Creates a new {@link useCookies} function
- * @param {Object} req - incoming http request (for SSR)
- * @see {@link https://github.com/reactivestack/cookies/tree/master/packages/universal-cookie|universal-cookie}
+ * @param req - incoming http request (for SSR)
+ * @see https://github.com/reactivestack/cookies/tree/master/packages/universal-cookie universal-cookie
  * @description Creates universal-cookie instance using request (default is window.document.cookie) and returns {@link useCookies} function with provided universal-cookie instance
  */
 export function createCookies(req?: IncomingMessage) {
@@ -24,11 +22,11 @@ export function createCookies(req?: IncomingMessage) {
 
 /**
  * Reactive methods to work with cookies (use {@link createCookies} method instead if you are using SSR)
- * @param {string[]|null|undefined} dependencies - array of watching cookie's names. Pass empty array if don't want to watch cookies changes.
- * @param {Object} options
- * @param {boolean} options.doNotParse - don't try parse value as JSON
- * @param {boolean} options.autoUpdateDependencies - automatically update watching dependencies
- * @param {Object} cookies - universal-cookie instance
+ * @param dependencies - array of watching cookie's names. Pass empty array if don't want to watch cookies changes.
+ * @param options
+ * @param options.doNotParse - don't try parse value as JSON
+ * @param options.autoUpdateDependencies - automatically update watching dependencies
+ * @param cookies - universal-cookie instance
  */
 export function useCookies(
   dependencies?: string[] | null,
@@ -59,11 +57,9 @@ export function useCookies(
     previousCookies = newCookies
   }
 
-  tryOnMounted(() => {
-    cookies.addChangeListener(onChange)
-  })
+  cookies.addChangeListener(onChange)
 
-  tryOnUnmounted(() => {
+  tryOnScopeDispose(() => {
     cookies.removeChangeListener(onChange)
   })
 

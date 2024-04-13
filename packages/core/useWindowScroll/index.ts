@@ -1,14 +1,21 @@
-import { ref } from 'vue-demi'
+import { computed, ref } from 'vue-demi'
 import { useEventListener } from '../useEventListener'
-import { ConfigurableWindow, defaultWindow } from '../_configurable'
+import type { ConfigurableWindow } from '../_configurable'
+import { defaultWindow } from '../_configurable'
+
+export interface UseWindowScrollOptions extends ConfigurableWindow {
+  behavior?: ScrollBehavior
+}
 
 /**
  * Reactive window scroll.
  *
- * @see   {@link https://vueuse.js.org/useWindowScroll}
+ * @see https://vueuse.org/useWindowScroll
  * @param options
  */
-export function useWindowScroll({ window = defaultWindow }: ConfigurableWindow = {}) {
+
+export function useWindowScroll(options: UseWindowScrollOptions = {}) {
+  const { window = defaultWindow, behavior = 'auto' } = options
   if (!window) {
     return {
       x: ref(0),
@@ -16,14 +23,32 @@ export function useWindowScroll({ window = defaultWindow }: ConfigurableWindow =
     }
   }
 
-  const x = ref(window.pageXOffset)
-  const y = ref(window.pageYOffset)
+  const internalX = ref(window.scrollX)
+  const internalY = ref(window.scrollY)
+
+  const x = computed({
+    get() {
+      return internalX.value
+    },
+    set(x: number) {
+      scrollTo({ left: x, behavior })
+    },
+  })
+  const y = computed({
+    get() {
+      return internalY.value
+    },
+    set(y: number) {
+      scrollTo({ top: y, behavior })
+    },
+  })
 
   useEventListener(
+    window,
     'scroll',
     () => {
-      x.value = window.pageXOffset
-      y.value = window.pageYOffset
+      internalX.value = window.scrollX
+      internalY.value = window.scrollY
     },
     {
       capture: false,
@@ -33,3 +58,5 @@ export function useWindowScroll({ window = defaultWindow }: ConfigurableWindow =
 
   return { x, y }
 }
+
+export type UseWindowScrollReturn = ReturnType<typeof useWindowScroll>

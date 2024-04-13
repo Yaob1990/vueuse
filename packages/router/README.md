@@ -2,25 +2,29 @@
 
 [![NPM version](https://img.shields.io/npm/v/@vueuse/router?color=a1b858)](https://www.npmjs.com/package/@vueuse/router)
 
-> This is an add-on of [VueUse](https://github.com/antfu/vueuse), providing utilities for vue-router (Vue 3 Only).
+> This is an add-on of [VueUse](https://github.com/vueuse/vueuse), providing utilities for vue-router (Vue 3 only).
 
-## 📦 Install
+::: warning
+This package only works for Vue 3
+:::
 
-<pre class='language-bash'>
-npm i <b>@vueuse/router</b> vue-router@4
-</pre>
+## Install
 
-## ⚡ Functions
+```bash
+npm i @vueuse/router vue-router@4
+```
+
+## Functions
 
 <!--GENERATED LIST, DO NOT MODIFY MANUALLY-->
 <!--FUNCTIONS_LIST_STARTS-->
 
-- /Router
-  - [`useRouteHash`](https://vueuse.js.org/?path=/story/router--useroutehash) — shorthand for reactive route.hash
-  - [`useRouteQuery`](https://vueuse.js.org/?path=/story/router--useroutequery) — shorthand for reactive route.query
+- [`useRouteHash`](https://vueuse.org/router/useRouteHash/) — shorthand for a reactive `route.hash`
+- [`useRouteParams`](https://vueuse.org/router/useRouteParams/) — shorthand for a reactive `route.params`
+- [`useRouteQuery`](https://vueuse.org/router/useRouteQuery/) — shorthand for a reactive `route.query`
 
 <!--FUNCTIONS_LIST_ENDS-->
 
-## 📄 License
+## License
 
-[MIT License](https://github.com/antfu/vueuse/blob/master/LICENSE) © 2019-2020 [Anthony Fu](https://github.com/antfu)
+[MIT License](https://github.com/vueuse/vueuse/blob/master/LICENSE) © 2019-PRESENT [Anthony Fu](https://github.com/antfu)

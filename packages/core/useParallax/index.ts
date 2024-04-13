@@ -1,17 +1,20 @@
-import { MaybeRef } from '@vueuse/shared'
-import { computed, ComputedRef, reactive } from 'vue-demi'
+import type { ComputedRef } from 'vue-demi'
+import { computed, reactive } from 'vue-demi'
+import type { MaybeElementRef } from '../unrefElement'
 import { useDeviceOrientation } from '../useDeviceOrientation'
 import { useMouseInElement } from '../useMouseInElement'
-import { ConfigurableWindow } from '../_configurable'
+import type { ConfigurableWindow } from '../_configurable'
+import { defaultWindow } from '../_configurable'
+import { useScreenOrientation } from '../useScreenOrientation'
 
-export interface ParallaxOptions extends ConfigurableWindow {
+export interface UseParallaxOptions extends ConfigurableWindow {
   deviceOrientationTiltAdjust?: (i: number) => number
   deviceOrientationRollAdjust?: (i: number) => number
   mouseTiltAdjust?: (i: number) => number
   mouseRollAdjust?: (i: number) => number
 }
 
-export interface ParallaxReturn {
+export interface UseParallaxReturn {
   /**
    * Roll value. Scaled to `-0.5 ~ 0.5`
    */
@@ -34,18 +37,19 @@ export interface ParallaxReturn {
  * @param options
  */
 export function useParallax(
-  target: MaybeRef<Element | null | undefined>,
-  options: ParallaxOptions = {},
-): ParallaxReturn {
+  target: MaybeElementRef,
+  options: UseParallaxOptions = {},
+): UseParallaxReturn {
   const {
     deviceOrientationTiltAdjust = i => i,
     deviceOrientationRollAdjust = i => i,
     mouseTiltAdjust = i => i,
     mouseRollAdjust = i => i,
-    window,
+    window = defaultWindow,
   } = options
 
   const orientation = reactive(useDeviceOrientation({ window }))
+  const screenOrientation = reactive(useScreenOrientation({ window }))
   const {
     elementX: x,
     elementY: y,
@@ -63,7 +67,23 @@ export function useParallax(
 
   const roll = computed(() => {
     if (source.value === 'deviceOrientation') {
-      const value = -orientation.beta! / 90
+      let value: number
+      switch (screenOrientation.orientation) {
+        case 'landscape-primary':
+          value = orientation.gamma! / 90
+          break
+        case 'landscape-secondary':
+          value = -orientation.gamma! / 90
+          break
+        case 'portrait-primary':
+          value = -orientation.beta! / 90
+          break
+        case 'portrait-secondary':
+          value = orientation.beta! / 90
+          break
+        default:
+          value = -orientation.beta! / 90
+      }
       return deviceOrientationRollAdjust(value)
     }
     else {
@@ -74,7 +94,23 @@ export function useParallax(
 
   const tilt = computed(() => {
     if (source.value === 'deviceOrientation') {
-      const value = orientation.gamma! / 90
+      let value: number
+      switch (screenOrientation.orientation) {
+        case 'landscape-primary':
+          value = orientation.beta! / 90
+          break
+        case 'landscape-secondary':
+          value = -orientation.beta! / 90
+          break
+        case 'portrait-primary':
+          value = orientation.gamma! / 90
+          break
+        case 'portrait-secondary':
+          value = -orientation.gamma! / 90
+          break
+        default:
+          value = orientation.gamma! / 90
+      }
       return deviceOrientationTiltAdjust(value)
     }
     else {

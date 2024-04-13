@@ -1,6 +1,10 @@
+---
+category: '@Router'
+---
+
 # useRouteHash
 
-> Shorthand for reactive route.hash 
+Shorthand for a reactive `route.hash`.
 
 ## Usage
 

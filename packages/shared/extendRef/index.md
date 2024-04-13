@@ -1,6 +1,14 @@
+---
+category: Reactivity
+---
+
 # extendRef
 
-> Add extra attributes to Ref.
+Add extra attributes to Ref.
+
+::: warning
+This function only works for Vue 2.7 or above.
+:::
 
 ## Usage
 

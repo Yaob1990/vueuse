@@ -1,17 +1,21 @@
+---
+category: '@Integrations'
+---
+
 # useQRCode
 
-> wrapper for [`qrcode`](https://github.com/soldair/node-qrcode)
+Wrapper for [`qrcode`](https://github.com/soldair/node-qrcode).
 
-## Install 
+## Install
 
 ```bash
-npm i qrcode
+npm i qrcode@^1
 ```
 
 ## Usage
 
 ```ts
-import { useQRCode } from '@vueuse/integrations'
+import { useQRCode } from '@vueuse/integrations/useQRCode'
 
 // `qrcode` will be a ref of data URL
 const qrcode = useQRCode('text-to-encode')
@@ -21,13 +25,13 @@ or passing a `ref` to it, the returned data URL ref will change along with the s
 
 ```ts
 import { ref } from 'vue'
-import { useQRCode } from '@vueuse/integrations'
+import { useQRCode } from '@vueuse/integrations/useQRCode'
 
 const text = ref('text-to-encode')
 const qrcode = useQRCode(text)
 ```
 
 ```html
-<input v-model="text" >
-<img :src="qrcode" />
+<input v-model="text" type="text" />
+<img :src="qrcode" alt="QR Code" />
 ```

@@ -1,32 +1,68 @@
-import { ref } from 'vue-demi'
+import { tryOnMounted } from '@vueuse/shared'
+import { ref, watch } from 'vue-demi'
 import { useEventListener } from '../useEventListener'
-import { ConfigurableWindow, defaultWindow } from '../_configurable'
+import { useMediaQuery } from '../useMediaQuery'
+import type { ConfigurableWindow } from '../_configurable'
+import { defaultWindow } from '../_configurable'
 
-export interface WindowSizeOptions extends ConfigurableWindow {
+export interface UseWindowSizeOptions extends ConfigurableWindow {
   initialWidth?: number
   initialHeight?: number
+  /**
+   * Listen to window `orientationchange` event
+   *
+   * @default true
+   */
+  listenOrientation?: boolean
+
+  /**
+   * Whether the scrollbar should be included in the width and height
+   * @default true
+   */
+  includeScrollbar?: boolean
 }
 
 /**
  * Reactive window size.
  *
- * @see   {@link https://vueuse.js.org/useWindowSize}
+ * @see https://vueuse.org/useWindowSize
  * @param options
  */
-export function useWindowSize({ window = defaultWindow, initialWidth = Infinity, initialHeight = Infinity }: WindowSizeOptions = {}) {
-  if (!window) {
-    return {
-      width: ref(initialWidth),
-      height: ref(initialHeight),
+export function useWindowSize(options: UseWindowSizeOptions = {}) {
+  const {
+    window = defaultWindow,
+    initialWidth = Number.POSITIVE_INFINITY,
+    initialHeight = Number.POSITIVE_INFINITY,
+    listenOrientation = true,
+    includeScrollbar = true,
+  } = options
+
+  const width = ref(initialWidth)
+  const height = ref(initialHeight)
+
+  const update = () => {
+    if (window) {
+      if (includeScrollbar) {
+        width.value = window.innerWidth
+        height.value = window.innerHeight
+      }
+      else {
+        width.value = window.document.documentElement.clientWidth
+        height.value = window.document.documentElement.clientHeight
+      }
     }
   }
-  const width = ref(window.innerWidth)
-  const height = ref(window.innerHeight)
 
-  useEventListener('resize', () => {
-    width.value = window.innerWidth
-    height.value = window.innerHeight
-  })
+  update()
+  tryOnMounted(update)
+  useEventListener('resize', update, { passive: true })
+
+  if (listenOrientation) {
+    const matches = useMediaQuery('(orientation: portrait)')
+    watch(matches, () => update())
+  }
 
   return { width, height }
 }
+
+export type UseWindowSizeReturn = ReturnType<typeof useWindowSize>

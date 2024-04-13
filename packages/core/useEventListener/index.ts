@@ -1,107 +1,185 @@
-import { Fn, isString, tryOnUnmounted } from '@vueuse/shared'
+import type { Arrayable, Fn, MaybeRefOrGetter } from '@vueuse/shared'
+import { isObject, noop, toValue, tryOnScopeDispose } from '@vueuse/shared'
+import { watch } from 'vue-demi'
+import type { MaybeElementRef } from '../unrefElement'
+import { unrefElement } from '../unrefElement'
 import { defaultWindow } from '../_configurable'
 
 interface InferEventTarget<Events> {
-  addEventListener(event: Events, fn?: any, options?: any): any
-  removeEventListener(event: Events, fn?: any, options?: any): any
+  addEventListener: (event: Events, fn?: any, options?: any) => any
+  removeEventListener: (event: Events, fn?: any, options?: any) => any
 }
 
 export type WindowEventName = keyof WindowEventMap
 export type DocumentEventName = keyof DocumentEventMap
+
+export interface GeneralEventListener<E = Event> {
+  (evt: E): void
+}
 
 /**
  * Register using addEventListener on mounted, and removeEventListener automatically on unmounted.
  *
  * Overload 1: Omitted Window target
  *
- * @see   {@link https://vueuse.js.org/useEventListener}
+ * @see https://vueuse.org/useEventListener
  * @param event
  * @param listener
  * @param options
  */
-export function useEventListener<E extends keyof WindowEventMap>(event: E, listener: (this: Window, ev: WindowEventMap[E]) => any, options?: boolean | AddEventListenerOptions): Fn
+export function useEventListener<E extends keyof WindowEventMap>(
+  event: Arrayable<E>,
+  listener: Arrayable<(this: Window, ev: WindowEventMap[E]) => any>,
+  options?: MaybeRefOrGetter<boolean | AddEventListenerOptions>
+): Fn
 
 /**
  * Register using addEventListener on mounted, and removeEventListener automatically on unmounted.
  *
  * Overload 2: Explicitly Window target
  *
- * @see   {@link https://vueuse.js.org/useEventListener}
+ * @see https://vueuse.org/useEventListener
  * @param target
  * @param event
  * @param listener
  * @param options
  */
-export function useEventListener<E extends keyof WindowEventMap>(target: Window, event: E, listener: (this: Window, ev: WindowEventMap[E]) => any, options?: boolean | AddEventListenerOptions): Fn
+export function useEventListener<E extends keyof WindowEventMap>(
+  target: Window,
+  event: Arrayable<E>,
+  listener: Arrayable<(this: Window, ev: WindowEventMap[E]) => any>,
+  options?: MaybeRefOrGetter<boolean | AddEventListenerOptions>
+): Fn
 
 /**
  * Register using addEventListener on mounted, and removeEventListener automatically on unmounted.
  *
  * Overload 3: Explicitly Document target
  *
- * @see   {@link https://vueuse.js.org/useEventListener}
+ * @see https://vueuse.org/useEventListener
  * @param target
  * @param event
  * @param listener
  * @param options
  */
-export function useEventListener<E extends keyof DocumentEventMap>(target: Document, event: E, listener: (this: Document, ev: DocumentEventMap[E]) => any, options?: boolean | AddEventListenerOptions): Fn
+export function useEventListener<E extends keyof DocumentEventMap>(
+  target: DocumentOrShadowRoot,
+  event: Arrayable<E>,
+  listener: Arrayable<(this: Document, ev: DocumentEventMap[E]) => any>,
+  options?: MaybeRefOrGetter<boolean | AddEventListenerOptions>
+): Fn
 
 /**
  * Register using addEventListener on mounted, and removeEventListener automatically on unmounted.
  *
- * Overload 4: Custom event target with event type infer
+ * Overload 4: Explicitly HTMLElement target
  *
- * @see   {@link https://vueuse.js.org/useEventListener}
+ * @see https://vueuse.org/useEventListener
  * @param target
  * @param event
  * @param listener
  * @param options
  */
-export function useEventListener<Names extends string>(target: InferEventTarget<Names>, event: Names, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): Fn
+export function useEventListener<E extends keyof HTMLElementEventMap>(
+  target: MaybeRefOrGetter<HTMLElement | null | undefined>,
+  event: Arrayable<E>,
+  listener: (this: HTMLElement, ev: HTMLElementEventMap[E]) => any,
+  options?: boolean | AddEventListenerOptions
+): () => void
 
 /**
  * Register using addEventListener on mounted, and removeEventListener automatically on unmounted.
  *
- * Overload 5: Custom event target fallback
+ * Overload 5: Custom event target with event type infer
  *
- * @see   {@link https://vueuse.js.org/useEventListener}
+ * @see https://vueuse.org/useEventListener
  * @param target
  * @param event
  * @param listener
  * @param options
  */
-export function useEventListener(target: EventTarget, event: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): Fn
+export function useEventListener<Names extends string, EventType = Event>(
+  target: InferEventTarget<Names>,
+  event: Arrayable<Names>,
+  listener: Arrayable<GeneralEventListener<EventType>>,
+  options?: MaybeRefOrGetter<boolean | AddEventListenerOptions>
+): Fn
+
+/**
+ * Register using addEventListener on mounted, and removeEventListener automatically on unmounted.
+ *
+ * Overload 6: Custom event target fallback
+ *
+ * @see https://vueuse.org/useEventListener
+ * @param target
+ * @param event
+ * @param listener
+ * @param options
+ */
+export function useEventListener<EventType = Event>(
+  target: MaybeRefOrGetter<EventTarget | null | undefined>,
+  event: Arrayable<string>,
+  listener: Arrayable<GeneralEventListener<EventType>>,
+  options?: MaybeRefOrGetter<boolean | AddEventListenerOptions>
+): Fn
 
 export function useEventListener(...args: any[]) {
-  let target: EventTarget | undefined
-  let event: string
-  let listener: any
-  let options: any
+  let target: MaybeRefOrGetter<EventTarget> | undefined
+  let events: Arrayable<string>
+  let listeners: Arrayable<Function>
+  let options: MaybeRefOrGetter<boolean | AddEventListenerOptions> | undefined
 
-  if (isString(args[0])) {
-    [event, listener, options] = args
+  if (typeof args[0] === 'string' || Array.isArray(args[0])) {
+    [events, listeners, options] = args
     target = defaultWindow
   }
   else {
-    [target, event, listener, options] = args
+    [target, events, listeners, options] = args
   }
 
   if (!target)
-    return
+    return noop
 
-  let stopped = false
+  if (!Array.isArray(events))
+    events = [events]
+  if (!Array.isArray(listeners))
+    listeners = [listeners]
 
-  target.addEventListener(event, listener, options)
-
-  const stop = () => {
-    if (stopped)
-      return
-    target!.removeEventListener(event, listener, options)
-    stopped = true
+  const cleanups: Function[] = []
+  const cleanup = () => {
+    cleanups.forEach(fn => fn())
+    cleanups.length = 0
   }
 
-  tryOnUnmounted(stop)
+  const register = (el: any, event: string, listener: any, options: any) => {
+    el.addEventListener(event, listener, options)
+    return () => el.removeEventListener(event, listener, options)
+  }
+
+  const stopWatch = watch(
+    () => [unrefElement(target as unknown as MaybeElementRef), toValue(options)],
+    ([el, options]) => {
+      cleanup()
+      if (!el)
+        return
+
+      // create a clone of options, to avoid it being changed reactively on removal
+      const optionsClone = isObject(options) ? { ...options } : options
+      cleanups.push(
+        ...(events as string[]).flatMap((event) => {
+          return (listeners as Function[]).map(listener => register(el, event, listener, optionsClone))
+        }),
+      )
+    },
+    { immediate: true, flush: 'post' },
+  )
+
+  const stop = () => {
+    stopWatch()
+    cleanup()
+  }
+
+  tryOnScopeDispose(stop)
 
   return stop
 }
