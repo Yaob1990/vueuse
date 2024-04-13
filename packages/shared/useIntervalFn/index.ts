@@ -69,7 +69,7 @@ export function useIntervalFn(cb: Fn, interval: MaybeRefOrGetter<number> = 1000,
     })
     tryOnScopeDispose(stopWatch)
   }
-
+  // note: 作用于销毁时候，清除定时器
   tryOnScopeDispose(pause)
 
   return {

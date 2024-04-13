@@ -26,6 +26,7 @@ export interface UseNowOptions<Controls extends boolean> {
  * @see https://vueuse.org/useNow
  * @param options
  */
+// note:返回值不同，用了函数重载
 export function useNow(options?: UseNowOptions<false>): Ref<Date>
 export function useNow(options: UseNowOptions<true>): { now: Ref<Date> } & Pausable
 export function useNow(options: UseNowOptions<boolean> = {}) {
